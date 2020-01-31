@@ -10,25 +10,15 @@ python3 ../gotoscorer.py -ref ./ref.m2 -hyp ./hyp.m2 -sys_name system1,system2,s
 
 出力例
 
-```
-,TP,FP,FN,TN,Precision,Recall,F,F0.5,Accuracy
-weighted
-system1, 1.3333, 0, 1.6667, 1.0, 1.0, 0.4444, 0.6154, 0.8, 0.5833
-system2, 0.6667, 2.0, 2.3333, 0.3333, 0.25, 0.2222, 0.2353, 0.2439, 0.25
-system3, 0.0, 2.6667, 3.0, 0.6667, 0.0, 0.0, 0, 0, 0.1667
-```
+![output_format](../image/output_format.png)
 
 * 訂正難易度データを用いて評価を行う．
 
 ```bash
-python3 ../gotoscorer.py -ref ./ref.m2 -hyp ./w_file_hyp.m2 -sys_name system1 -w_file ./weight.txt
+python3 ../gotoscorer.py -ref ./ref.m2 -hyp ./w_file_hyp.m2 -sys_name sys1 -w_file ./weight.txt
 ```
 
 出力例
 
-```
-,TP,FP,FN,TN,Precision,Recall,F,F0.5,Accuracy
-weighted
-system1, 1.3333, 0, 1.6667, 1.0, 1.0, 0.4444, 0.6154, 0.8, 0.5833
-```
+![output_format](../image/output_format2.png)
 

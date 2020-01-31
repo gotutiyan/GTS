@@ -26,19 +26,20 @@ def main(args):
     else: weighted_gold_chunks = cluc_weight(evaluated_gold_chunks)
     # debug(weighted_gold_chunks)
 
-    print(",TP,FP,FN,TN,Precision,Recall,F,F0.5,Accuracy")
     # 重み付きの評価値を計算
     weighted_evaluations = get_performance(weighted_gold_chunks, True)
     # 重み付きでない評価値を計算
-    not_weighted_evaluations = get_performance(weighted_gold_chunks, False)
+    # not_weighted_evaluations = get_performance(weighted_gold_chunks, False)
     print("weighted")
-    for system_id, evalinfo in weighted_evaluations.items():
-        print(s[system_id],end=", ")
-        evalinfo.show(True)
-    print("not - weighted")
-    for system_id, evalinfo in not_weighted_evaluations.items():
-        print(s[system_id],end=", ")
-        evalinfo.show(True)
+    print("name","TP","FP","FN","TN","Prec.","Recall","F","F0.5","Accuracy",sep="\t")
+    for system_id, score in weighted_evaluations.items():
+        print(s[system_id],end=":\t")
+        score.show(True)
+    # print("not - weighted")
+    # print("sys_name","TP","FP","FN","TN","Precision","Recall","F","F0.5","Accuracy",sep="\t")
+    # for system_id, score in not_weighted_evaluations.items():
+    #     print(s[system_id],end=", ")
+    #     score.show(True)
     # generate heat map
     if args.heat:
         generate_heatmap_combine(weighted_gold_chunks, args.heat)
@@ -395,11 +396,11 @@ class Score:
         except ZeroDivisionError: self.Accuracy = 0
         pass
 
-    def show(self,verbose = True):
-        print(round(self.TP,4),round(self.FP,4),round(self.FN,4)\
-            ,round(self.TN,4),round(self .Precision,4),round(self.Recall,4)\
-                ,round(self.F,4),round(self.F5,4),round(self.Accuracy,4)\
-                    ,round(self.all_weight,4),sep=', ')
+    def show(self, verbose = True):
+        print("{:.4f}".format(round(self.TP,4)),"{:.4f}".format(round(self.FP,4)),"{:.4f}".format(round(self.FN,4))\
+            ,"{:.4f}".format(round(self.TN,4)),"{:.4f}".format(round(self.Precision,4)),"{:.4f}".format(round(self.Recall,4))\
+                ,"{:.4f}".format(round(self.F,4)),"{:.4f}".format(round(self.F5,4)),"{:.4f}".format(round(self.Accuracy,4))\
+                    ,sep='\t')
 ##########################################################################PEP79
 def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
     # {cat : list()}
@@ -491,21 +492,21 @@ def generate_heatmap_combine(gold_chunks, file_name):
             if gchunk.orig_range[0] != gchunk.orig_range[1]:
                 if not gchunk.is_error:
                     if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'"+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
+                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                         s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
                     else:
                         s += ' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])
                 else:
-                    edit = 'onmouseover="f({})"'.format("'"+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
+                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                     s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
             # INSERT chunk
             else:
                 if gchunk.is_error:
-                    edit = 'onmouseover="f({})"'.format("'"+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
+                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                     s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
                 else:
                     if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'"+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
+                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                         s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
                     else:
                         s+=' '

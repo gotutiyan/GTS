@@ -1,4 +1,5 @@
 # Go-To-Scorer
+
 本リポジトリは，「訂正難易度を考慮した文法誤り訂正のための性能評価尺度」（言語処理学会第26回年次大会）のツールである．
 
 ### 概要
@@ -35,7 +36,7 @@ python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name <sys_1,sys_2,...,sys
 
 * `-gen_w_file <out_file>`
 
-  重みファイルを出力する．重みファイルのフォーマットは，1行目にシステムの総数，2行目以降は，チャンクごとの重みが記述されている．また，各行が文に対応している．出力例は，`demo/weight.txt`を参照．
+  重みファイルを出力する．重みファイルのフォーマットは，1行目にシステムの総数，2行目以降は，チャンクごとの正解システム数が記述されている．また，各行が文に対応している．出力例は，`demo/weight.txt`を参照．
 
 * `-w_file <w_file>`
 
@@ -45,16 +46,11 @@ python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name <sys_1,sys_2,...,sys
 
 `python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -sys_name sys1,sys2,sys3` 
 
-```
-出力例
-,TP,FP,FN,TN,Precision,Recall,F,F0.5,Accuracy
-weighted
-sys1, 1.3333, 0, 1.6667, 1.0, 1.0, 0.4444, 0.6154, 0.8, 0.5833
-sys2, 0.6667, 2.0, 2.3333, 0.3333, 0.25, 0.2222, 0.2353, 0.2439, 0.25
-sys3, 0.0, 2.6667, 3.0, 0.6667, 0.0, 0.0, 0, 0, 0.1667
-```
+出力例：
 
-csv形式で出力される．
+![output_format](./image/output_format.png)
+
+タブ区切りで出力される．
 
 詳しくは，[demo](https://github.com/gotutiyan/GTS/tree/master/demo)で記載．
 
@@ -83,4 +79,3 @@ csv形式で出力される．
 ![heat_map](./image/heat_map.gif)
 
 また，赤色は誤り箇所に対するもの，青色はシステムの誤訂正に対するものを表している．この理由から，青色の単語列は，原文自体が正解の単語列となる．よって，上部に表示される(ii)正解単語列 は，原文自体を表示している．
-
