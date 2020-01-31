@@ -1,6 +1,12 @@
 # Go-To-Scorer
 本リポジトリは，「訂正難易度を考慮した文法誤り訂正のための性能評価尺度」（言語処理学会第26回年次大会）のツールである．
 
+### 概要
+
+本ツールは，文法誤り訂正タスクの性能評価を行うものである．特に，訂正難易度を考慮した性能評価を行える点が特徴である．
+
+また，訂正難易度の可視化，誤りの種類別の訂正難易度の集計，訂正難易度データの生成，訂正難易度データを用いた性能評価の機能を提供する．
+
 ### 実行要件
 
 python 3.6 以上
@@ -8,22 +14,24 @@ python 3.6 以上
 ### 文法
 
 ```bash
-python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name sys_1,sys_2,...,sys_N 
+python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name <sys_1,sys_2,...,sys_N> 
 ```
 
-`-ref`， `-hyp` ，`-sys_name`は必須である．
+`-ref <ref_m2>`は正解の訂正を表すファイル，`-hyp <hyp_m2>`はシステムの訂正を表すファイルである．各入力ファイルの例は，`demo/ref.m2`および`demo/hyp.m2`を参照．
 
-`<ref_m2>`の例を`demo/ref.m2`に，`<hyp_m2>`の例を`demo/hyp.m2`に示している．
+`-sys_name <sys_1,sys_2,...,sys_N>`は，システム名を登録するためのオプションである．システム名はカンマ区切りで，スペースを空けずに指定する．システム名は性能評価値を出力する際に使用する．
+
+また，`-ref`， `-hyp` ，`-sys_name`は必須である．
 
 他には，以下のオプションを提供している．
 
 * `-heat <out_file>`
 
-  重みを表すヒートマップ を出力する．これは論文中の図1に対応する．htmlファイルと，それに対応するcssファイルが得られる．出力例は，`demo/heat_map.html`および`demo/heat_map.html.css`を参照．
+  訂正難易度を可視化したデータを出力する．具体的には，論文中の図1に対応するような，htmlファイルと，それに対応するcssファイルを出力する．出力例は，`demo/heat_map.html`および`demo/heat_map.html.css`を参照．
 
 * `-cat <out_file>`
 
-  誤りの種類ごとに，訂正難易度の平均と標準偏差を昇順で出力する．これは論文中の表3のようなものである．出力例は，`demo/error_type_difficulty.txt`を参照．
+  誤りの種類ごとに，訂正難易度の平均と標準偏差を降順で出力する．これは論文中の表3に対応する．出力例は，`demo/error_type_difficulty.txt`を参照．
 
 * `-gen_w_file <out_file>`
 
@@ -33,27 +41,46 @@ python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name sys_1,sys_2,...,sys_
 
   重みファイルを用いて性能評価を行う．
 
+### デモ
+
+`python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -sys_name sys1,sys2,sys3` 
+
+```
+出力例
+,TP,FP,FN,TN,Precision,Recall,F,F0.5,Accuracy
+weighted
+sys1, 1.3333, 0, 1.6667, 1.0, 1.0, 0.4444, 0.6154, 0.8, 0.5833
+sys2, 0.6667, 2.0, 2.3333, 0.3333, 0.25, 0.2222, 0.2353, 0.2439, 0.25
+sys3, 0.0, 2.6667, 3.0, 0.6667, 0.0, 0.0, 0, 0, 0.1667
+```
+
+csv形式で出力される．
+
+詳しくは，[demo](https://github.com/gotutiyan/GTS/tree/master/demo)で記載．
+
 ### 入力ファイルのフォーマットと生成
 
 本ツールの入力は2つのファイルであり，いずれもフォーマットはm2形式である．また，いずれも[ERRANT](https://github.com/chrisjbryant/errant)の`errant_parallel`，および`errant_m2`を用いて生成する．
 
-**例**
+**デモデータを用いた例**
 
  `errant_parallel -orig demo/orig.txt -cor demo/sys1.txt demo/sys2.txt demo/sys3.txt -out demo/hyp.m2`
 
-`errant_parallel -orig demo/orig.txt -cor demo/gold.txt -out ref.m2`
+`errant_parallel -orig demo/orig.txt -cor demo/gold.txt -out demo/ref.m2`
 
 また，正解の訂正情報がm2形式で既に存在するとき，
 
-`errant_m2 -gold <before_ref_m2_file> -out ref.m2`
+`errant_m2 -gold <before_ref_m2_file> -out demo/ref.m2`
 
-を実行する．このようにして得られたファイルを用いて評価を行う．
+を実行する．このようにして得られたファイルを入力として評価を行う．
 
-### ヒートマップ
+### 訂正難易度の可視化機能
 
-ヒートマップ は，主に分析を行う上で有用なツールである．
+本ツールでは，`-heat`オプションによって，訂正難易度の可視化機能を提供している．
 
-原文に対して，赤および青で色付けが行われており，いずれも色が濃くなるほど訂正難易度が高いことを表す．また，色付けされた単語列にマウスをかざすことにより，その訂正箇所の(i)誤り種類，(ii)正解単語列，(iii)重み，の情報が閲覧できる．
+原文に対して，赤および青で色付けが行われており，いずれも色が濃くなるほど訂正難易度が高いことを表す．また，色付けされた単語列にマウスをかざすことにより，その訂正箇所の(i)誤り種類，(ii)正解単語列，(iii)重み の情報が閲覧できる．
 
-また，赤色は誤り箇所に対するもの，青色はシステムの誤訂正に対するものを表している．
+![1月-31-2020 14-34-30](./image/heat_map.gif)
+
+また，赤色は誤り箇所に対するもの，青色はシステムの誤訂正に対するものを表している．この理由から，青色の単語列は，原文自体が正解の単語列となる．よって，上部に表示される(ii)正解単語列 は，原文自体を表示している．
 
