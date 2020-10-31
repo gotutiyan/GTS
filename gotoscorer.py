@@ -8,7 +8,7 @@ import heatmap
 
 ##########################################################################PEP79
 def main(args):
-    s=args.sys_name.split(',')
+    sys_name = args.sys_name.split(',')
     ref_m2 = open(args.ref).read().strip().split("\n\n")
     print("start getting gold chunk ...")
     # 誤り箇所だけの正解チャンク列を生成
@@ -27,20 +27,12 @@ def main(args):
     else: weighted_gold_chunks = cluc_weight(evaluated_gold_chunks)
     # debug(weighted_gold_chunks)
 
-    # 重み付きの評価値を計算
+    # Compute weighted score
     weighted_evaluations = get_performance(weighted_gold_chunks, True)
-    # 重み付きでない評価値を計算
-    # not_weighted_evaluations = get_performance(weighted_gold_chunks, False)
-    print("weighted")
-    print("name","TP","FP","FN","TN","Prec.","Recall","F","F0.5","Accuracy",sep="\t")
-    for system_id, score in weighted_evaluations.items():
-        print(s[system_id],end=":\t")
-        score.show(True)
-    # print("not - weighted")
-    # print("sys_name","TP","FP","FN","TN","Precision","Recall","F","F0.5","Accuracy",sep="\t")
-    # for system_id, score in not_weighted_evaluations.items():
-    #     print(s[system_id],end=", ")
-    #     score.show(True)
+    show_score(weighted_evaluations, sys_name, mode="weighted")
+    # Compute non-weighted score
+    # non_weighted_evaluations = get_performance(weighted_gold_chunks, False)
+    # show_score(non_weighted_evaluations, sys_name, mode="non-weighted")
     # generate heat map
     if args.heat:
         heatmap.generate_heatmap_combine(weighted_gold_chunks, args.heat)
@@ -50,6 +42,13 @@ def main(args):
     # generate file which all words are replaced thier weight
     if args.gen_w_file:
         generate_weight_file(weighted_gold_chunks, args.gen_w_file)
+
+def show_score(evaluations, sys_name, mode="weighted"):
+    print('-----', mode, 'score -----')
+    print("name","TP","FP","FN","TN","Prec.","Recall","F","F0.5","Accuracy",sep="\t")
+    for system_id, score in evaluations.items():
+        print(sys_name[system_id],end=":\t")
+        score.show(True)
 
 # Calcurate performance: precision, recall, F, F0.5, and Accuracy 
 # input1: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
