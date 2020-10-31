@@ -2,12 +2,12 @@ import argparse
 import os
 import random
 from operator import itemgetter
+import toolbox
+import heatmap
 
 
 ##########################################################################PEP79
 def main(args):
-    s=args.sys_name.split(',')
-    # error_chunks contain only ERROR chunk
     ref_m2 = open(args.ref).read().strip().split("\n\n")
     print("start getting gold chunk ...")
     # 誤り箇所だけの正解チャンク列を生成
@@ -26,29 +26,33 @@ def main(args):
     else: weighted_gold_chunks = cluc_weight(evaluated_gold_chunks)
     # debug(weighted_gold_chunks)
 
-    # 重み付きの評価値を計算
+    # Compute weighted score
     weighted_evaluations = get_performance(weighted_gold_chunks, True)
-    # 重み付きでない評価値を計算
-    # not_weighted_evaluations = get_performance(weighted_gold_chunks, False)
-    print("weighted")
-    print("name","TP","FP","FN","TN","Prec.","Recall","F","F0.5","Accuracy",sep="\t")
-    for system_id, score in weighted_evaluations.items():
-        print(s[system_id],end=":\t")
-        score.show(True)
-    # print("not - weighted")
-    # print("sys_name","TP","FP","FN","TN","Precision","Recall","F","F0.5","Accuracy",sep="\t")
-    # for system_id, score in not_weighted_evaluations.items():
-    #     print(s[system_id],end=", ")
-    #     score.show(True)
+    show_score(weighted_evaluations, args, mode="weighted")
+    # Compute non-weighted score
+    # non_weighted_evaluations = get_performance(weighted_gold_chunks, False)
+    # show_score(non_weighted_evaluations, args, mode="non-weighted")
     # generate heat map
     if args.heat:
-        generate_heatmap_combine(weighted_gold_chunks, args.heat)
+        heatmap.generate_heatmap_combine(weighted_gold_chunks, args.heat)
     # calculate cat performance 
     if args.cat: 
-        calc_cat_performance(weighted_gold_chunks, args.cat, "file")
+        calc_cat_performance(weighted_gold_chunks, args.cat, "tsv")
     # generate file which all words are replaced thier weight
     if args.gen_w_file:
         generate_weight_file(weighted_gold_chunks, args.gen_w_file)
+
+def show_score(evaluations, args, mode="weighted"):
+    sys_name = args.sys_name.split(',') if args.sys_name else None
+    print('-----', mode, 'score -----')
+    print('name\t', end='')
+    if args.verbose:
+        print("TP","FP","FN","TN",sep="\t", end="\t")
+    print("Prec.","Recall","F","F0.5","Accuracy",sep="\t")
+    for system_id, score in evaluations.items():
+        print(sys_name[system_id] if sys_name else str(system_id),
+              end=":\t")
+        score.show(args.verbose)
 
 # Calcurate performance: precision, recall, F, F0.5, and Accuracy 
 # input1: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
@@ -63,33 +67,26 @@ def get_performance(gold_chunk, is_weighted = True):
             for system_id, evalinfo in chunk.sys2eval.items(): # look evaluation of each system for chunk
                 system_score[system_id] = system_score.get(system_id, Score())
 
-                # 3つのバイナリパラメータを2進数的な表記に変換。
-                eval_num = int(chunk.is_error)*4 + int(evalinfo.is_modefy)*2 + int(evalinfo.is_correct)
-                if eval_num == 7: system_score[system_id].TP += chunk.weight if is_weighted else 1.0
-                elif eval_num == 4: system_score[system_id].FN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 6:
-                    system_score[system_id].FP += chunk.weight if is_weighted else 1.0
-                    system_score[system_id].FN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 1: system_score[system_id].TN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 2: system_score[system_id].FP += chunk.weight if is_weighted else 1.0
-                system_score[system_id].all_weight += chunk.weight if is_weighted else 1.0
-                if chunk.is_error:
-                    system_score[system_id].test += chunk.weight if is_weighted else 1.0
-    
+                system_score[system_id] = update_score(chunk, evalinfo, system_score[system_id], is_weighted)
+                
     for score in system_score.values():
         score.get_RPFA()
     return system_score
 
-# def evaluation_with_weighted_file(gold_chunks, file_name):
-#     score = Score()
-#     weighted_data = open(file_name).read().strip().split("\n")
-#     splited_weighted_data = list()
-#     for wdata in weighted_data:
-#         splited_weighted_data.append(wdata.split())
-#     print(splited_weighted_data)
-#     for sent, system in gold_chunks.items():
-#         for gchunk in system[0]:
-#             for schunk in system_chunks[sent]:
+def update_score(chunk, evalinfo, score, is_weighted):
+    # 3つのバイナリパラメータを2進数的な表記に変換。
+    eval = (int(chunk.is_error), int(evalinfo.is_modefy), int(evalinfo.is_correct))
+    if eval == (1,1,1): score.TP += chunk.weight if is_weighted else 1.0
+    elif eval == (1,0,0): score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (1,1,0):
+        score.FP += chunk.weight if is_weighted else 1.0
+        score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,0,1): score.TN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,1,0): score.FP += chunk.weight if is_weighted else 1.0
+    score.all_weight += chunk.weight if is_weighted else 1.0
+    if chunk.is_error:
+        score.test += chunk.weight if is_weighted else 1.0
+    return score
 
 
 # calculation weight of each chunk
@@ -287,13 +284,14 @@ def edit2ChunkInfo(sent, edit, error=True):
 # get infomation by argparse 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-sys_name", required=True)
     parser.add_argument("-ref", required=True)
     parser.add_argument("-hyp", required=True)
+    parser.add_argument("-sys_name")
     parser.add_argument("-heat")
     parser.add_argument("-cat")
     parser.add_argument("-gen_w_file")
     parser.add_argument("-w_file")
+    parser.add_argument("-verbose", action='store_true')
     
     args = parser.parse_args()
     return args
@@ -396,38 +394,35 @@ class Score:
         except ZeroDivisionError: self.Accuracy = 0
         pass
 
-    def show(self, verbose = True):
-        print("{:.4f}".format(round(self.TP,4)),"{:.4f}".format(round(self.FP,4)),"{:.4f}".format(round(self.FN,4))\
-            ,"{:.4f}".format(round(self.TN,4)),"{:.4f}".format(round(self.Precision,4)),"{:.4f}".format(round(self.Recall,4))\
-                ,"{:.4f}".format(round(self.F,4)),"{:.4f}".format(round(self.F5,4)),"{:.4f}".format(round(self.Accuracy,4))\
-                    ,sep='\t')
+    def show(self, verbose = False):
+        if verbose:
+            print("{:.4f}".format(round(self.TP, 3)),
+                "{:.4f}".format(round(self.FP, 3)),
+                "{:.4f}".format(round(self.FN, 3)),
+                "{:.4f}".format(round(self.TN, 3)),
+                sep='\t', end='\t')
+        print("{:.4f}".format(round(self.Precision, 3)),
+                "{:.4f}".format(round(self.Recall,3 )),
+                "{:.4f}".format(round(self.F, 3)),
+                "{:.4f}".format(round(self.F5, 3)),
+                "{:.4f}".format(round(self.Accuracy, 3)),
+                sep='\t')
 ##########################################################################PEP79
-def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
+def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
     # {cat : list()}
-    cat2weight_list = dict()
-    for sent,systems in gold_chunks.items():
-        for system in systems:
-            for chunk in system:
-                if chunk.is_error:
-                    cat = chunk.cat.split(':')
-                    cat2weight_list[cat[0]] = cat2weight_list.get(cat[0], list())
-                    cat2weight_list[cat[0]].append(chunk.weight)
-                    cat2weight_list[':'.join(cat[1:])] = \
-                        cat2weight_list.get(':'.join(cat[1:]), list())
-                    cat2weight_list[':'.join(cat[1:])].append(chunk.weight)
-    
-    cat2score = dict() # {cat : [sum, average, 分散, size]}
+    cat2weight_list = toolbox.categories_counter(gold_chunks)
+    cat2score = dict() # {cat : [sum, average, SD, size]}
     for cat, weight_list in cat2weight_list.items():
-        cat2score[cat] = cat2score.get(cat, [0,0,0,0])
+        cat2score[cat] = cat2score.get(cat, [0, 0, 0, 0])
         cat2score[cat][3] = len(weight_list)
         # sum
         cat2score[cat][0] = sum(cat2weight_list[cat])
         # average
         cat2score[cat][1] = cat2score[cat][0] / len(weight_list)
-        # 分散
+        # standard deviation
         dispersion = 0
         for weight in weight_list:
-            dispersion += (weight - cat2score[cat][1]) * (weight - cat2score[cat][1])
+            dispersion += (weight - cat2score[cat][1]) ** 2
         try: cat2score[cat][2] = (dispersion / (len(weight_list) - 1)) ** 0.5
         except ZeroDivisionError: cat2score[cat][2] = 0
     
@@ -436,111 +431,24 @@ def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
         buff.append([score[1],cat,score[2],score[3]])
     buff = sorted(buff,reverse = True, key=lambda x: x[0])
 
-    if print_mode == "file":
-        ave = open(out_file_name,"w")
-        ave.write('Code\tAv.\tSD\tFleq.\n')
+    if print_mode == "tsv":
+        out_fp = open(out_file_name,"w")
+        out_fp.write('Code\tAv.\tSD\tFleq.\n')
         for bu in buff:
-            ave.write("{}\t{}\t{}\t{}\n".format(bu[1],str(round(bu[0],2))\
+            out_fp.write("{}\t{}\t{}\t{}\n".format(bu[1],str(round(bu[0],2))\
                 +' ',str(round(bu[2],2))+' ',str(bu[3])))
-        ave.close()
+        out_fp.close()
+    # for a paper's figure
     elif print_mode == "tex":
         tex = open(out_file_name,"w")
         tex.write("\\begin{center}\n\\begin{tabular}{c|ccc}\\hline\n")
-        tex.write("Code&Average&huhen-bunsan&Number of appearances \\\\ \\hline\n")
+        tex.write("Code&Av.&SD&Fleq. \\\\ \\hline\n")
         for bu in buff:
             tex.write("{} & {} & {} & {} \\\\ \n".format(bu[1],str(round(bu[0],3))\
                 +' ',str(round(bu[2],3))+' ',str(bu[3])))
         tex.write("\\hline\end{tabular}\n\end{center}")
     return cat2score
 
-##########################################################################PEP79
-
-def generate_heatmap_combine(gold_chunks, file_name):
-    number_of_systems = -1
-    head = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <link rel="stylesheet" type="text/css" href="./"""+file_name.split('/')[-1]+""".css">
-        <title>heat-map</title>
-    </head>
-    <script type="text/javascript">
-        function f(message){
-            document.getElementById("explanation").innerText=message;
-        }
-    </script>
-    <body>
-    <div style="position: fixed; left:0;top:0;background-color:rgb(180,180,180); padding:1px;">
-        <p id="explanation" style="font-weight:900;">Mouseover to show information about corrections . </p>
-    </div>
-    <div style="margin:70px 0px 0px 0px">
-    """
-    foot = """
-    </div>
-    </body>
-    </html>
-    """
-    out = open(file_name,"w")
-    out.write(head)
-    for sent, systems in gold_chunks.items():
-        sent = sent.split()
-        s = "<p>"
-        for gchunk in systems[0]:
-            number_of_systems = len(gchunk.sys2eval)
-            # BASIC chunk
-            if gchunk.orig_range[0] != gchunk.orig_range[1]:
-                if not gchunk.is_error:
-                    if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                        s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
-                    else:
-                        s += ' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])
-                else:
-                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                    s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
-            # INSERT chunk
-            else:
-                if gchunk.is_error:
-                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                    s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
-                else:
-                    if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                        s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
-                    else:
-                        s+=' '
-        s += "</p>"
-        out.write(s+"\n")
-    out.write(foot)
-    generate_css(number_of_systems, file_name)
-    out.close()
-
-def count_false_positive(chunk):
-    ret = 0
-    for evalinfo in chunk.sys2eval.values():
-        if evalinfo.is_modefy and not evalinfo.is_correct:
-            ret += 1
-    return ret
-
-def generate_css(number_of_systems, file_name):
-    file_name += '.css'
-    out = open(file_name,"w")
-    delta = 1 / number_of_systems
-    s = ''
-    color = dict()
-    color['red'] = '255,0,0,'
-    color['blue'] = '0,0,255,'
-    
-    for i in range(number_of_systems + 1):
-        if delta*i <0.7: s = '.redw'+str(round(delta*i*100))+'{ background-color: rgb('+color['red']+str(min(1.0, max(delta*i, 0.1)))+')}'
-        else: s = '.redw'+str(round(delta*i*100))+'{ background-color: rgb('+color['red']+str(min(1.0, max(delta*i, 0.1)))+');font-weight:900;}'
-        out.write(s+'\n')
-    for i in range(number_of_systems + 1):
-        if delta*i <0.7: s = '.bluew'+str(round(delta*i*100))+'{ background-color: rgb('+color['blue']+str(min(1.0, max(delta*i, 0.1)))+')}'
-        else: s = '.bluew'+str(round(delta*i*100))+'{ background-color: rgb('+color['blue']+str(min(1.0, max(delta*i, 0.1)))+');font-weight:900;}'
-        out.write(s+'\n')
-    out.close()
 ##########################################################################PEP79
 
 def generate_weight_file(gold_chunks, file_name):
@@ -631,7 +539,7 @@ def debug(chunks):
     for sent, systems in chunks.items():
         for system in systems:
             for chunk in system:
-                chunk.show()
+                chunk.show(True)
       
 if __name__ == "__main__":
     args = get_parser()
