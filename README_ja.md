@@ -1,20 +1,29 @@
 # Go-To-Scorer
 
-本リポジトリでは，「訂正難易度を考慮した文法誤り訂正のための性能評価尺度」（言語処理学会第26回年次大会）のツールを掲載している．本研究は，COLING2020にも採択されている．
+本リポジトリは，以下の論文のツールである．
+
+* 五藤巧, 永田亮, 三田雅人, 塙一晃．
+  “訂正難易度を考慮した文法誤り訂正のための性能評価尺度．”
+  言語処理学会第26回年次大会 (2020.3)
+* Takumi Gotou, Ryo Nagata, Masato Mita and Kazuaki Hanawa
+  “Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation”
+  In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020) 
 
 ### 文法
 
 ```bash
-python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2> -sys_name <sys_1,sys_2,...,sys_N> 
+python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2>
 ```
 
-`-ref <ref_m2>`は正解の訂正を表すファイル，`-hyp <hyp_m2>`はシステムの訂正を表すファイルである．どちらのファイルも，ERRANT](https://github.com/chrisjbryant/errant)により生成されるM2形式である．各ファイルの例は，`demo/ref.m2`および`demo/hyp.m2`を参照．
+`-ref <ref_m2>`は正解の訂正を表すファイル，`-hyp <hyp_m2>`はシステムの訂正を表すファイルである．どちらのファイルも，[ERRANT](https://github.com/chrisjbryant/errant)により生成されるM2形式である．各ファイルの例は，`demo/ref.m2`および`demo/hyp.m2`を参照．
 
-`-sys_name <sys_1,sys_2,...,sys_N>`は，システム名を登録するためのオプションである．システム名はカンマ区切りで指定する．これは性能評価値を出力する際に使用する．
-
-`-ref`， `-hyp` ，`-sys_name`はいずれも必須である．
+`-ref`， `-hyp` はいずれも必須である．
 
 ### その他のオプション
+
+* `-sys_name <sys_1,sys_2,...,sys_N>`
+
+  システムの名前をIDから指定した文字列に変換して出力する．カンマ区切りで指定．
 
 * `-heat <out_file>`
 
