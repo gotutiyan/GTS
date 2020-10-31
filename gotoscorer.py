@@ -89,18 +89,6 @@ def update_score(chunk, evalinfo, score, is_weighted):
     return score
 
 
-# def evaluation_with_weighted_file(gold_chunks, file_name):
-#     score = Score()
-#     weighted_data = open(file_name).read().strip().split("\n")
-#     splited_weighted_data = list()
-#     for wdata in weighted_data:
-#         splited_weighted_data.append(wdata.split())
-#     print(splited_weighted_data)
-#     for sent, system in gold_chunks.items():
-#         for gchunk in system[0]:
-#             for schunk in system_chunks[sent]:
-
-
 # calculation weight of each chunk
 # input: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
 #        gold chunks

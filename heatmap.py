@@ -75,7 +75,6 @@ def count_false_positive(chunk):
     return ret
 
 def generate_css(number_of_systems, file_name):
-    print(number_of_systems)
     file_name += '.css'
     out_fp = open(file_name,"w")
     delta = 1 / number_of_systems
