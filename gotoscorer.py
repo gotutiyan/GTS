@@ -7,7 +7,6 @@ from operator import itemgetter
 ##########################################################################PEP79
 def main(args):
     s=args.sys_name.split(',')
-    # error_chunks contain only ERROR chunk
     ref_m2 = open(args.ref).read().strip().split("\n\n")
     print("start getting gold chunk ...")
     # 誤り箇所だけの正解チャンク列を生成
@@ -63,22 +62,27 @@ def get_performance(gold_chunk, is_weighted = True):
             for system_id, evalinfo in chunk.sys2eval.items(): # look evaluation of each system for chunk
                 system_score[system_id] = system_score.get(system_id, Score())
 
-                # 3つのバイナリパラメータを2進数的な表記に変換。
-                eval_num = int(chunk.is_error)*4 + int(evalinfo.is_modefy)*2 + int(evalinfo.is_correct)
-                if eval_num == 7: system_score[system_id].TP += chunk.weight if is_weighted else 1.0
-                elif eval_num == 4: system_score[system_id].FN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 6:
-                    system_score[system_id].FP += chunk.weight if is_weighted else 1.0
-                    system_score[system_id].FN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 1: system_score[system_id].TN += chunk.weight if is_weighted else 1.0
-                elif eval_num == 2: system_score[system_id].FP += chunk.weight if is_weighted else 1.0
-                system_score[system_id].all_weight += chunk.weight if is_weighted else 1.0
-                if chunk.is_error:
-                    system_score[system_id].test += chunk.weight if is_weighted else 1.0
-    
+                system_score[system_id] = update_score(chunk, evalinfo, system_score[system_id], is_weighted)
+                
     for score in system_score.values():
         score.get_RPFA()
     return system_score
+
+def update_score(chunk, evalinfo, score, is_weighted):
+    # 3つのバイナリパラメータを2進数的な表記に変換。
+    eval = (int(chunk.is_error), int(evalinfo.is_modefy), int(evalinfo.is_correct))
+    if eval == (1,1,1): score.TP += chunk.weight if is_weighted else 1.0
+    elif eval == (1,0,0): score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (1,1,0):
+        score.FP += chunk.weight if is_weighted else 1.0
+        score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,0,1): score.TN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,1,0): score.FP += chunk.weight if is_weighted else 1.0
+    score.all_weight += chunk.weight if is_weighted else 1.0
+    if chunk.is_error:
+        score.test += chunk.weight if is_weighted else 1.0
+    return score
+
 
 # def evaluation_with_weighted_file(gold_chunks, file_name):
 #     score = Score()
@@ -631,7 +635,7 @@ def debug(chunks):
     for sent, systems in chunks.items():
         for system in systems:
             for chunk in system:
-                chunk.show()
+                chunk.show(True)
       
 if __name__ == "__main__":
     args = get_parser()
