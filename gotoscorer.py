@@ -46,7 +46,7 @@ def main(args):
         heatmap.generate_heatmap_combine(weighted_gold_chunks, args.heat)
     # calculate cat performance 
     if args.cat: 
-        calc_cat_performance(weighted_gold_chunks, args.cat, "file")
+        calc_cat_performance(weighted_gold_chunks, args.cat, "tsv")
     # generate file which all words are replaced thier weight
     if args.gen_w_file:
         generate_weight_file(weighted_gold_chunks, args.gen_w_file)
@@ -411,19 +411,18 @@ class Score:
 def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
     # {cat : list()}
     cat2weight_list = toolbox.categories_counter(gold_chunks)
-    
-    cat2score = dict() # {cat : [sum, average, sd, size]}
+    cat2score = dict() # {cat : [sum, average, SD, size]}
     for cat, weight_list in cat2weight_list.items():
-        cat2score[cat] = cat2score.get(cat, [0,0,0,0])
+        cat2score[cat] = cat2score.get(cat, [0, 0, 0, 0])
         cat2score[cat][3] = len(weight_list)
         # sum
         cat2score[cat][0] = sum(cat2weight_list[cat])
         # average
         cat2score[cat][1] = cat2score[cat][0] / len(weight_list)
-        # 分散
+        # standard deviation
         dispersion = 0
         for weight in weight_list:
-            dispersion += (weight - cat2score[cat][1]) * (weight - cat2score[cat][1])
+            dispersion += (weight - cat2score[cat][1]) ** 2
         try: cat2score[cat][2] = (dispersion / (len(weight_list) - 1)) ** 0.5
         except ZeroDivisionError: cat2score[cat][2] = 0
     
@@ -433,12 +432,13 @@ def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
     buff = sorted(buff,reverse = True, key=lambda x: x[0])
 
     if print_mode == "tsv":
-        ave = open(out_file_name,"w")
-        ave.write('Code\tAv.\tSD\tFleq.\n')
+        out_fp = open(out_file_name,"w")
+        out_fp.write('Code\tAv.\tSD\tFleq.\n')
         for bu in buff:
-            ave.write("{}\t{}\t{}\t{}\n".format(bu[1],str(round(bu[0],2))\
+            out_fp.write("{}\t{}\t{}\t{}\n".format(bu[1],str(round(bu[0],2))\
                 +' ',str(round(bu[2],2))+' ',str(bu[3])))
-        ave.close()
+        out_fp.close()
+    # for a paper's figure
     elif print_mode == "tex":
         tex = open(out_file_name,"w")
         tex.write("\\begin{center}\n\\begin{tabular}{c|ccc}\\hline\n")

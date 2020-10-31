@@ -1,6 +1,6 @@
 def categories_counter(gold_chunks):
     cat2weight_list = dict()
-    for sent,systems in gold_chunks.items():
+    for _, systems in gold_chunks.items():
         for system in systems:
             for chunk in system:
                 if chunk.is_error:
