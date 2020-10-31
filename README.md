@@ -1,4 +1,4 @@
-# Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation
+# Go-To-Scorer
 
 Code for the paper: "Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation". (In COLING 2020) 
 
@@ -39,8 +39,6 @@ each oprions is required.
 Output：
 
 ![output_format](./image/output_format.png)
-
-[demo](https://github.com/gotutiyan/GTS/tree/master/demo) describes the detail.
 
 ### Generating and format of input files
 
