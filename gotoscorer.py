@@ -492,25 +492,25 @@ def generate_heatmap_combine(gold_chunks, file_name):
         s = "<p>"
         for gchunk in systems[0]:
             number_of_systems = len(gchunk.sys2eval)
+            edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+\
+                    gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
             # BASIC chunk
             if gchunk.orig_range[0] != gchunk.orig_range[1]:
                 if not gchunk.is_error:
                     if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                        s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
+                        s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+\
+                             '>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
                     else:
                         s += ' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])
                 else:
-                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
-                    s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
+                    s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+\
+                         '>'+' '.join(sent[gchunk.orig_range[0]:gchunk.orig_range[1]])+'</span> '
             # INSERT chunk
             else:
                 if gchunk.is_error:
-                    edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                     s += '<span class="redw'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
                 else:
                     if count_false_positive(gchunk) > 0:
-                        edit = 'onmouseover="f({})"'.format("'[error type]: "+gchunk.cat+' [correct]: '+gchunk.gold_sent+' [weight]: '+str(round(gchunk.weight,2))+" '")
                         s += '<span class="bluew'+str(round(gchunk.weight*100))+'" '+edit+'>'+' '+'</span> '
                     else:
                         s+=' '
