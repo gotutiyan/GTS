@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 from operator import itemgetter
+import toolbox
 
 
 ##########################################################################PEP79
@@ -406,21 +407,11 @@ class Score:
                 ,"{:.4f}".format(round(self.F,4)),"{:.4f}".format(round(self.F5,4)),"{:.4f}".format(round(self.Accuracy,4))\
                     ,sep='\t')
 ##########################################################################PEP79
-def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
+def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
     # {cat : list()}
-    cat2weight_list = dict()
-    for sent,systems in gold_chunks.items():
-        for system in systems:
-            for chunk in system:
-                if chunk.is_error:
-                    cat = chunk.cat.split(':')
-                    cat2weight_list[cat[0]] = cat2weight_list.get(cat[0], list())
-                    cat2weight_list[cat[0]].append(chunk.weight)
-                    cat2weight_list[':'.join(cat[1:])] = \
-                        cat2weight_list.get(':'.join(cat[1:]), list())
-                    cat2weight_list[':'.join(cat[1:])].append(chunk.weight)
+    cat2weight_list = toolbox.categories_counter(gold_chunks)
     
-    cat2score = dict() # {cat : [sum, average, 分散, size]}
+    cat2score = dict() # {cat : [sum, average, sd, size]}
     for cat, weight_list in cat2weight_list.items():
         cat2score[cat] = cat2score.get(cat, [0,0,0,0])
         cat2score[cat][3] = len(weight_list)
@@ -440,7 +431,7 @@ def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
         buff.append([score[1],cat,score[2],score[3]])
     buff = sorted(buff,reverse = True, key=lambda x: x[0])
 
-    if print_mode == "file":
+    if print_mode == "tsv":
         ave = open(out_file_name,"w")
         ave.write('Code\tAv.\tSD\tFleq.\n')
         for bu in buff:
@@ -450,7 +441,7 @@ def calc_cat_performance(gold_chunks, out_file_name, print_mode = "file"):
     elif print_mode == "tex":
         tex = open(out_file_name,"w")
         tex.write("\\begin{center}\n\\begin{tabular}{c|ccc}\\hline\n")
-        tex.write("Code&Average&huhen-bunsan&Number of appearances \\\\ \\hline\n")
+        tex.write("Code&Av.&SD&Fleq. \\\\ \\hline\n")
         for bu in buff:
             tex.write("{} & {} & {} & {} \\\\ \n".format(bu[1],str(round(bu[0],3))\
                 +' ',str(round(bu[2],3))+' ',str(bu[3])))
