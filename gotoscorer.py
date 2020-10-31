@@ -8,7 +8,6 @@ import heatmap
 
 ##########################################################################PEP79
 def main(args):
-    sys_name = args.sys_name.split(',')
     ref_m2 = open(args.ref).read().strip().split("\n\n")
     print("start getting gold chunk ...")
     # 誤り箇所だけの正解チャンク列を生成
@@ -29,10 +28,10 @@ def main(args):
 
     # Compute weighted score
     weighted_evaluations = get_performance(weighted_gold_chunks, True)
-    show_score(weighted_evaluations, sys_name, mode="weighted")
+    show_score(weighted_evaluations, args, mode="weighted")
     # Compute non-weighted score
     # non_weighted_evaluations = get_performance(weighted_gold_chunks, False)
-    # show_score(non_weighted_evaluations, sys_name, mode="non-weighted")
+    # show_score(non_weighted_evaluations, args, mode="non-weighted")
     # generate heat map
     if args.heat:
         heatmap.generate_heatmap_combine(weighted_gold_chunks, args.heat)
@@ -43,12 +42,17 @@ def main(args):
     if args.gen_w_file:
         generate_weight_file(weighted_gold_chunks, args.gen_w_file)
 
-def show_score(evaluations, sys_name, mode="weighted"):
+def show_score(evaluations, args, mode="weighted"):
+    sys_name = args.sys_name.split(',') if args.sys_name else None
     print('-----', mode, 'score -----')
-    print("name","TP","FP","FN","TN","Prec.","Recall","F","F0.5","Accuracy",sep="\t")
+    print('name\t', end='')
+    if args.verbose:
+        print("TP","FP","FN","TN",sep="\t", end="\t")
+    print("Prec.","Recall","F","F0.5","Accuracy",sep="\t")
     for system_id, score in evaluations.items():
-        print(sys_name[system_id],end=":\t")
-        score.show(True)
+        print(sys_name[system_id] if sys_name else str(system_id),
+              end=":\t")
+        score.show(args.verbose)
 
 # Calcurate performance: precision, recall, F, F0.5, and Accuracy 
 # input1: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
@@ -292,13 +296,14 @@ def edit2ChunkInfo(sent, edit, error=True):
 # get infomation by argparse 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-sys_name", required=True)
     parser.add_argument("-ref", required=True)
     parser.add_argument("-hyp", required=True)
+    parser.add_argument("-sys_name")
     parser.add_argument("-heat")
     parser.add_argument("-cat")
     parser.add_argument("-gen_w_file")
     parser.add_argument("-w_file")
+    parser.add_argument("-verbose", action='store_true')
     
     args = parser.parse_args()
     return args
@@ -401,11 +406,19 @@ class Score:
         except ZeroDivisionError: self.Accuracy = 0
         pass
 
-    def show(self, verbose = True):
-        print("{:.4f}".format(round(self.TP,4)),"{:.4f}".format(round(self.FP,4)),"{:.4f}".format(round(self.FN,4))\
-            ,"{:.4f}".format(round(self.TN,4)),"{:.4f}".format(round(self.Precision,4)),"{:.4f}".format(round(self.Recall,4))\
-                ,"{:.4f}".format(round(self.F,4)),"{:.4f}".format(round(self.F5,4)),"{:.4f}".format(round(self.Accuracy,4))\
-                    ,sep='\t')
+    def show(self, verbose = False):
+        if verbose:
+            print("{:.4f}".format(round(self.TP, 3)),
+                "{:.4f}".format(round(self.FP, 3)),
+                "{:.4f}".format(round(self.FN, 3)),
+                "{:.4f}".format(round(self.TN, 3)),
+                sep='\t', end='\t')
+        print("{:.4f}".format(round(self.Precision, 3)),
+                "{:.4f}".format(round(self.Recall,3 )),
+                "{:.4f}".format(round(self.F, 3)),
+                "{:.4f}".format(round(self.F5, 3)),
+                "{:.4f}".format(round(self.Accuracy, 3)),
+                sep='\t')
 ##########################################################################PEP79
 def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
     # {cat : list()}
