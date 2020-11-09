@@ -9,10 +9,12 @@
   “Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation”
   In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020) 
 
+本ツールは，誤りの訂正難易度を考慮し，誤り訂正システムを評価するものである．他にも，誤り訂正難易度の可視化機能，重みファイルを利用して評価を行う機能，誤り種類ごとの訂正難易度を計算する機能を提供している．
+
 ### 文法
 
 ```bash
-python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2>
+python3 gotoscorer.py -ref <ref_m2_path> -hyp <hyp_m2_path>
 ```
 
 `-ref <ref_m2>`は正解の訂正を表すファイル，`-hyp <hyp_m2>`はシステムの訂正を表すファイルである．どちらのファイルも，[ERRANT](https://github.com/chrisjbryant/errant)により生成されるM2形式である．各ファイルの例は，`demo/ref.m2`および`demo/hyp.m2`を参照．
@@ -29,29 +31,29 @@ python3 gotoscorer.py -ref <ref_m2> -hyp <hyp_m2>
 
   訂正難易度を可視化するビジュアライザーを生成する．これは論文中の図1に対応する．出力例は，`demo/heat_map.html`および`demo/heat_map.html.css`を参照．
 
-* `-cat <out_file>`
+* `-cat <output_file_path>`
 
   誤り種類ごとに，訂正難易度の平均と標準偏差を降順で出力する．これは論文中の表3に対応する．出力例は，`demo/error_type_difficulty.txt`を参照．
 
-* `-gen_w_file <out_file>`
+* `-gen_w_file <output_file_path>`
 
   重みファイルを出力する．1行目にシステムの総数，2行目以降に，各チャンクの正解システム数が記述される形式である．また，各行が文に対応している．出力例は，`demo/weight.txt`を参照．
 
-* `-w_file <w_file>`
+* `-w_file <weight_file_path>`
 
   重みファイルを用いて性能評価を行う．これはシステムを単一で評価する際に役立つ．
 
 ### デモ
 
-`python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -sys_name sys1,sys2,sys3` 
+`python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2` 
 
 出力例：
 
-![output_format](./image/output_format.png)
+![output_format](./image/output_default.png)
 
 ### 入力ファイルのフォーマットと生成
 
-GTSは`-ref`と`-hyp`の2つのファイルを必須入力としている．いずれもフォーマットは[ERRANT](https://github.com/chrisjbryant/errant)が生成するm2形式である．
+GTSは`-ref`と`-hyp`の2つのファイルを必須入力としている．いずれもフォーマットは[ERRANT](https://github.com/chrisjbryant/errant)が生成するM^2形式である．
 
 **デモデータを用いた例**
 
@@ -67,6 +69,6 @@ GTSは`-ref`と`-hyp`の2つのファイルを必須入力としている．い�
 
 本ツールでは，訂正難易度のビジュアライザーを提供している．
 
-誤りに対して色付けされており，濃い色であるほど訂正難易度が高いことを表す．また，赤は訂正すべき単語列（`ref_m2`に記載の誤り），青は訂正すべきでない単語列を表す．また，色付けされた単語列にマウスをかざすことにより，その訂正箇所の詳細が表示される：(i)誤り種類，(ii)正解の訂正，(iii)訂正難易度．
+誤りに対して色付けされており，濃い色であるほど訂正難易度が高いことを表す．また，赤は訂正すべき単語列（`ref_m2`に記載の誤り），青は訂正すべきでないが，システムが誤訂正した単語列を表す．また，色付けされた単語列にマウスをかざすことにより，その訂正箇所の詳細が表示される．この情報は左から順に，(i)誤り種類，(ii)正解の訂正，(iii)訂正難易度である．
 
 ![heat_map](./image/heat_map.gif)
