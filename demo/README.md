@@ -5,12 +5,12 @@
   （実行はこのdemoフォルダ内で行うことを仮定）
 
 ```bash
-python3 ../gotoscorer.py -ref ./ref.m2 -hyp ./hyp.m2 -sys_name system1,system2,system3 -heat ./heat_map.html -cat ./error_type_difficulty.txt -gen_w_file ./weight.txt
+python3 ../gotoscorer.py -ref ./ref.m2 -hyp ./hyp.m2 -sys_name sys1,sys2,sys3 -heat ./heat_map.html -cat ./error_type_difficulty.txt -gen_w_file ./weight.txt
 ```
 
-出力例
+Output:
 
-![output_format](../image/output_format.png)
+![output_format](../image/output_sys_name.png)
 
 * 訂正難易度データを用いて評価を行う．
 
