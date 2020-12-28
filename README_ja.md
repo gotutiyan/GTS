@@ -41,7 +41,7 @@ python3 gotoscorer.py -ref <ref_m2_path> -hyp <hyp_m2_path>
 
 * `-w_file <weight_file_path>`
 
-  重みファイルを用いて性能評価を行う．これはシステムを単一で評価する際に役立つ．
+  [重みファイル](https://github.com/gotutiyan/GTS/tree/master/weight_files)を用いて性能評価を行う．これはシステムを単一で評価する場合に用いる．
 
 ### デモ
 
