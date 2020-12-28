@@ -34,7 +34,7 @@ each oprions is required.
 
 * `-w_file <weight_file_path>`
 
-  Evaluate systems for using weight-file.  This function is for evaluating system in isolation.
+  Evaluate systems for using [weight-file](https://github.com/gotutiyan/GTS/tree/master/weight_files).  This function is for evaluating system in isolation. 
 
 ### Demo
 
