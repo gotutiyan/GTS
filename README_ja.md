@@ -7,7 +7,7 @@
   言語処理学会第26回年次大会 (2020.3)
 * Takumi Gotou, Ryo Nagata, Masato Mita and Kazuaki Hanawa
   “Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation”
-  In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020) 
+  In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020)  [Link: ACL Anthology](https://www.aclweb.org/anthology/2020.coling-main.188/)
 
 本ツールは，誤りの訂正難易度を考慮し，誤り訂正システムを評価するものである．他にも，誤り訂正難易度の可視化機能，重みファイルを利用して評価を行う機能，誤り種類ごとの訂正難易度を計算する機能を提供している．
 
@@ -42,6 +42,19 @@ python3 gotoscorer.py -ref <ref_m2_path> -hyp <hyp_m2_path>
 * `-w_file <weight_file_path>`
 
   [重みファイル](https://github.com/gotutiyan/GTS/tree/master/weight_files)を用いて性能評価を行う．これはシステムを単一で評価する場合に用いる．
+  
+* `-chunk_visualizer <file_path>`
+
+  チャンクを以下の例のように可視化する．ファイルのパスに`None`を指定すると，ターミナルに出力される．
+
+  ```
+  ----- chunk visualizer -----
+  orig: ||We|         |discussing||about||its||.||
+  gold: ||We|have been|discussing||     ||it ||.||
+  
+  orig: ||I||have been||to|   |park||tomorrow||.||
+  gold: ||I||   go    ||to|the|park||        ||.||
+  ```
 
 ### デモ
 
