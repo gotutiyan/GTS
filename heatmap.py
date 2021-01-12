@@ -70,7 +70,7 @@ def convert_chunk_to_htmlsentence(gchunk, sent):
 def count_false_positive(chunk):
     ret = 0
     for evalinfo in chunk.sys2eval.values():
-        if evalinfo.is_modefy and not evalinfo.is_correct:
+        if evalinfo.is_modify and not evalinfo.is_correct:
             ret += 1
     return ret
 

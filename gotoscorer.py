@@ -5,297 +5,31 @@ from operator import itemgetter
 import toolbox
 import heatmap
 
-
-##########################################################################PEP79
 def main(args):
     ref_m2 = open(args.ref).read().strip().split("\n\n")
-    print("start getting gold chunk ...")
-    # 誤り箇所だけの正解チャンク列を生成
+    print("Generating chunks ...")
+    # Generate chunks.
     error_chunks = generate_error_chunks(ref_m2)
-    # ダミーチャンクも含めた、正解のチャンク列を生成
-    gold_chunks = generate_all_chunks(error_chunks)
-    print("start getting system chunk ...")
-    # システムのチャンク列を生成
+    basic_chunks = insert_basic_chunks(error_chunks)
+    gold_chunks = insert_insert_chunks(basic_chunks)
     systems_chunks = generate_systems_chunks(args)
-    print("start getting evaluation ...")
-    # 2つのチャンク列を突き合し、B^(s)に当たる情報を獲得
+    print("Evaluating systems ...")
     evaluated_gold_chunks = evaluation_systems(gold_chunks, systems_chunks)
-    # B^(s)にあたる情報から、重みを計算
-    weighted_gold_chunks = None
-    if args.w_file: weighted_gold_chunks = get_weight_from_weight_file(gold_chunks, args.w_file)
-    else: weighted_gold_chunks = cluc_weight(evaluated_gold_chunks)
-    # debug(weighted_gold_chunks)
-
-    # Compute weighted score
-    weighted_evaluations = get_performance(weighted_gold_chunks, True)
-    show_score(weighted_evaluations, args, mode="weighted")
-    # Compute non-weighted score
-    # non_weighted_evaluations = get_performance(weighted_gold_chunks, False)
-    # show_score(non_weighted_evaluations, args, mode="non-weighted")
-    # generate heat map
+    if args.w_file: weighted_gold_chunks = get_weight_from_weight_file(evaluated_gold_chunks, args.w_file)
+    else: weighted_gold_chunks = calc_weight(evaluated_gold_chunks)
+    # Compute score
+    weighted_evaluations = calc_performance(weighted_gold_chunks, True)
+    show_score(weighted_evaluations, args, title="weighted scores")
     if args.heat:
         heatmap.generate_heatmap_combine(weighted_gold_chunks, args.heat)
-    # calculate cat performance 
     if args.cat: 
         calc_cat_performance(weighted_gold_chunks, args.cat, "tsv")
-    # generate file which all words are replaced thier weight
     if args.gen_w_file:
         generate_weight_file(weighted_gold_chunks, args.gen_w_file)
+    if args.chunk_visualizer:
+        toolbox.chunk_visualizer(gold_chunks, args.chunk_visualizer)
+    return
 
-def show_score(evaluations, args, mode="weighted"):
-    sys_name = args.sys_name.split(',') if args.sys_name else None
-    print('-----', mode, 'score -----')
-    print('name\t', end='')
-    if args.verbose:
-        print("TP","FP","FN","TN",sep="\t", end="\t")
-    print("Prec.","Recall","F","F0.5","Accuracy",sep="\t")
-    for system_id, score in evaluations.items():
-        print(sys_name[system_id] if sys_name else str(system_id),
-              end=":\t")
-        score.show(args.verbose)
-
-# Calcurate performance: precision, recall, F, F0.5, and Accuracy 
-# input1: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
-#         gold(correct) chunk
-# input2: type:bool, if True , It compute score by weighted score, otherwise compute normal score 
-# output: type:dict, shape:{system_id: Score instance}, each system's score  
-def get_performance(gold_chunk, is_weighted = True):
-    system_score = dict()
-    for sent, systems in gold_chunk.items(): # look each sentence
-        for chunk in systems[0]: # look each chunk
-            if chunk.cat == "noop": continue
-            for system_id, evalinfo in chunk.sys2eval.items(): # look evaluation of each system for chunk
-                system_score[system_id] = system_score.get(system_id, Score())
-
-                system_score[system_id] = update_score(chunk, evalinfo, system_score[system_id], is_weighted)
-                
-    for score in system_score.values():
-        score.get_RPFA()
-    return system_score
-
-def update_score(chunk, evalinfo, score, is_weighted):
-    # 3つのバイナリパラメータを2進数的な表記に変換。
-    eval = (int(chunk.is_error), int(evalinfo.is_modefy), int(evalinfo.is_correct))
-    if eval == (1,1,1): score.TP += chunk.weight if is_weighted else 1.0
-    elif eval == (1,0,0): score.FN += chunk.weight if is_weighted else 1.0
-    elif eval == (1,1,0):
-        score.FP += chunk.weight if is_weighted else 1.0
-        score.FN += chunk.weight if is_weighted else 1.0
-    elif eval == (0,0,1): score.TN += chunk.weight if is_weighted else 1.0
-    elif eval == (0,1,0): score.FP += chunk.weight if is_weighted else 1.0
-    score.all_weight += chunk.weight if is_weighted else 1.0
-    if chunk.is_error:
-        score.test += chunk.weight if is_weighted else 1.0
-    return score
-
-
-# calculation weight of each chunk
-# input: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
-#        gold chunks
-# output: type:dict, shape:{str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]} 
-#         gold chunk which calculated weight of each chunk 
-def cluc_weight(gold_chunks):
-    for sent, systems in gold_chunks.items():
-        for chunk in systems[0]:
-            chunk.cluc_weight()
-    return gold_chunks
-
-def get_weight_from_weight_file(gold_chunks, file_name):
-    weight_file = open(file_name).read().strip().split('\n')
-    number_of_sys = int(weight_file[0])
-    splited_weighted_data = []
-    for line in weight_file[1:]:
-        weights = list(map(int, line.split()))
-        splited_weighted_data.append(weights)
-    
-    idx = 0
-    for sent, systems in gold_chunks.items():
-        for i, chunk in enumerate(systems[0]):
-            chunk.weight = chunk.weight_f(splited_weighted_data[idx][i] / number_of_sys)
-        idx += 1
-    return gold_chunks
-
-
-
-# システムを評価し、論文中のB^(s)を獲得する
-# input1: chunks of gold  {str:[[ChunkInfo,,,ChunkInfo],,,[ChunkInfo,,,ChunkInfo]]}
-# input2: chunks of systems 
-def evaluation_systems(gold_chunks, systems_chunks):
-    for sent, systems in gold_chunks.items():
-        for gchunk in systems[0]:
-            if gchunk.cat == "noop": continue
-            for system_id, system_chunks in enumerate(systems_chunks[sent]):
-                for schunk in system_chunks:
-                    if schunk.cat == "noop": continue
-                    # チャンクが一致していれば、そのチャンクは（誤りチャンクかを問わず）正解
-                    if gchunk.equal(schunk) == "equal":
-                        gchunk.sys2eval[system_id] = EvalInfo(schunk.is_error, True)
-                    # チャンクが一致していないが、一方がもう一方をカバーしていれば、（誤りチャンクかを問わず）不正解
-                    elif gchunk.equal(schunk) == "cover":
-                        if gchunk.sys2eval.get(system_id)\
-                            and gchunk.sys2eval[system_id].is_modefy:
-                            continue
-                        gchunk.sys2eval[system_id] = EvalInfo(schunk.is_error, False)
-                if gchunk.sys2eval.get(system_id) == None:
-                    if gchunk.is_error:
-                        gchunk.sys2eval[system_id] = EvalInfo(False, False)
-                    else:
-                        gchunk.sys2eval[system_id] = EvalInfo(False, True)
-                
-    return gold_chunks        
-
-##########################################################################PEP79
-# get ERROR chunk
-# input1: type:string, m2形式のデータ
-# input2: type:bool, 
-# output: {str: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
-#               各文に対するチャンク列のリスト
-def generate_error_chunks(m2_file, mode="gold"):
-    all_edit = dict()
-    # each sentence
-    sent2num = dict()
-    for info in m2_file:
-        chunks = list()
-        orig_sent, coder_dict = processM2(info)
-        if coder_dict:
-			# Save marked up or 
-            proc_orig = ""
-			# Loop through the  
-            for coder, coder_info in sorted(coder_dict.items()):
-                cor_sent = coder_info[0]
-                gold_edits = coder_info[1]
-                if (mode == "gold" and coder == "0") or (mode == "system"):
-                    for gold_edit in gold_edits:
-                    # Um and UNK edits (uncorrected errors) are always preserved.
-                        if gold_edit[2] in {"Um", "UNK","noop"}:
-                            continue
-                        if not gold_edit: continue
-                        chunk_info = edit2ChunkInfo(orig_sent, gold_edit+[coder])
-                        chunks.append(chunk_info)
-        # 同じ文が出現した時の対処として、文末にIDをつける
-        if mode == "gold":
-            sent2num[' '.join(orig_sent)] = sent2num.get(' '.join(orig_sent),-1) + 1
-            orig_sent = orig_sent + [str(sent2num[' '.join(orig_sent)])]
-        all_edit[' '.join(orig_sent)] = all_edit.get(' '.join(orig_sent),list())
-        all_edit[' '.join(orig_sent)].append(chunks)
-    return all_edit
-
-# 全てのチャンクを生成する
-# input1: string, original sentence
-# input2: list of ChunkInfo's instance, ERROR chunks
-def generate_all_chunks(error_chunks):
-    for_all_chunks = dict()
-    for sent, system_chunk in error_chunks.items():
-        for coder,chunks in enumerate(system_chunk):
-            orig_sent = sent.split()
-            basic_chunk = list()
-            # get BASIC chunk
-            prev_pos = 0
-            for i,chunk in enumerate(chunks):
-                # ERROR chunk
-                if chunk.orig_range[0] == prev_pos:
-                    prev_pos = chunk.orig_range[1]
-                    basic_chunk.append(chunk)
-                # NO ERROR chunk
-                else :
-                    for j in range(prev_pos, chunks[i].orig_range[0]):
-                        no_error_chunk = edit2ChunkInfo(orig_sent,\
-                            [j, j+1,"",orig_sent[j],None,None,coder],False)
-                        basic_chunk.append(no_error_chunk)
-                    basic_chunk.append(chunk)
-                    prev_pos = chunk.orig_range[1]
-            for j in range(prev_pos,len(orig_sent)-1):
-                no_error_chunk = edit2ChunkInfo(orig_sent,\
-                    [j,j+1,"",orig_sent[j],None,None,coder],False)
-                basic_chunk.append(no_error_chunk)
-        
-            all_chunks = list()
-            # get INSERT chunk
-            for i, chunk in enumerate(basic_chunk):
-                # Already exit insert chunk
-                if chunk.orig_range[0] == chunk.orig_range[1]:
-                    all_chunks.append(chunk)
-                    continue
-                if i-1 >= 0 and basic_chunk[i-1].orig_range[0] == basic_chunk[i-1].orig_range[1]:
-                    all_chunks.append(chunk)
-                    continue
-                insert_chunk = edit2ChunkInfo(orig_sent,\
-                    [chunk.orig_range[0], chunk.orig_range[0], "INSERT", "",None,None,chunk.coder_id],False)
-                all_chunks.append(insert_chunk)
-                all_chunks.append(chunk)
-            if all_chunks[-1].orig_range[0] != all_chunks[-1].orig_range[1]:
-                insert_chunk = edit2ChunkInfo(orig_sent,\
-                    [len(orig_sent)-1, len(orig_sent)-1, "INSERT", "",None,None,chunk.coder_id],False)
-                all_chunks.append(insert_chunk)
-            for_all_chunks[sent] = for_all_chunks.get(sent, list())
-            for_all_chunks[sent].append(all_chunks)
-    return for_all_chunks
-
-# Generate chunk list of each system
-# input: args
-# output: chunk list of each system
-def generate_systems_chunks(args):
-    system_chunk = dict()
-    sent2num = dict()
-    with open(args.hyp) as fp:
-        orig_sent = ""
-        id2edit = list()
-        for line in fp:
-            if line == "\n":
-                hyp_m2 = list()
-                for edits in id2edit:
-                    hyp_m2.append('\n'.join(edits))
-                error_chunks = generate_error_chunks(hyp_m2,"system")
-                all_chunks = generate_all_chunks(error_chunks)
-                system_chunk[orig_sent[2:]] = all_chunks[orig_sent[2:]]
-            elif line[0] == "S":
-                orig_sent = line.rstrip()
-                sent2num[orig_sent] = sent2num.get(orig_sent,-1) + 1
-                orig_sent = orig_sent + " " + str(sent2num[orig_sent])
-                id2edit = list()
-            elif line[0] == "A":
-                index = int(line.rstrip().split('|||')[-1])
-                if index >= len(id2edit):
-                    id2edit.append(list())
-                    id2edit[-1].append(orig_sent.rstrip())
-                id2edit[index].append(line.rstrip())
-            else:
-                break
-    return system_chunk
-                    
-# input1: list of string, original_sentence
-# input2: list, shape of [int,int,string,string,int,int,int]
-# input3: bool, is this error edit, True is default
-def edit2ChunkInfo(sent, edit, error=True):
-    info = ChunkInfo()
-    info.cat = edit[2]
-    info.orig_range = (edit[0], edit[1])
-    if info.cat == "noop":
-        info.is_error = False
-        return info
-    info.orig_sent = ' '.join(sent[edit[0]:edit[1]])
-    info.gold_range = (edit[4],edit[5])
-    info.gold_sent = edit[3]
-    info.coder_id = edit[6]
-    info.is_error = error
-
-    return info
-
-# get infomation by argparse 
-def get_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-ref", required=True)
-    parser.add_argument("-hyp", required=True)
-    parser.add_argument("-sys_name")
-    parser.add_argument("-heat")
-    parser.add_argument("-cat")
-    parser.add_argument("-gen_w_file")
-    parser.add_argument("-w_file")
-    parser.add_argument("-verbose", action='store_true')
-    
-    args = parser.parse_args()
-    return args
-    
 class ChunkInfo:
     def __init__(self):
         self.orig_range = (-1, -1)
@@ -308,23 +42,31 @@ class ChunkInfo:
         self.sys2eval = dict()
         self.weight = -1
 
-    # input: other ChunkInfo instance
-    # output: judgement their are equal or not .
-    def equal(self, other):
+    def equal(self, other) -> str:
+        '''Judge myself and input chunk are equal or not.
+        Input: other ChunkInfo instance.
+        Output: string represented result of comparision.
+            "equal": Satisfy two conditions as following: 
+                     (i)  all tokens corresponding to the chunks are the same.
+                     (ii) the positions of the tokens aligned to the original sentence are the same. 
+            "cover": Satisfy only (ii) condition, or overlapping ranges.
+            "pass": Any condition are not satisfied.
+        '''
         if other.orig_range == self.orig_range:
             if other.gold_sent == self.gold_sent:
                 return "equal"
             else:
                 return "cover"
         elif self.orig_range[0] == self.orig_range[1]:
-            return "true insert"
+            return "pass"
         elif self.orig_range[0] <= other.orig_range[0] < self.orig_range[1]:
                 return "cover"
         elif other.orig_range[0] <= self.orig_range[0] < other.orig_range[1]:
                 return "cover"
         else: return "pass"
+
     # calculation weight of its chunk
-    def cluc_weight(self):
+    def calc_weight(self) -> None:
         correct = 0
         for system_id, evalinfo in self.sys2eval.items():
             if evalinfo.is_correct:
@@ -333,15 +75,16 @@ class ChunkInfo:
         self.weight = self.weight_f(correct_ans_rate)
         return 
 
-    def weight_f(self, correct_ans_rate):
+    def weight_f(self, correct_ans_rate: float) -> float:
+        '''Calcurate correction difficulty based on correction success rate.
+        '''
         return 1 - correct_ans_rate
 
-    def get_number_of_system(self):
+    def get_number_of_system(self) -> int:
         return len(self.sys2eval)
-            
 
     # debug print
-    def show(self,verbose=False):
+    def show(self,verbose=False) -> None:
         print("orig_range: ",self.orig_range,\
         "\norig_sent: ",self.orig_sent,\
         "\ngold_range: ", self.gold_range,\
@@ -356,15 +99,17 @@ class ChunkInfo:
                 print("system_id: ",system_id)
                 evalinfo.show()
         print("\n")
+        return
                 
 
 class EvalInfo:
-    def __init__(self, modefy, correct):
-        self.is_modefy = modefy
+    def __init__(self, modify, correct):
+        self.is_modify = modify
         self.is_correct = correct
 
-    def show(self):
-        print("modfy: ",self.is_modefy, "correct: ",self.is_correct)
+    def show(self) -> None:
+        print("modfy: ",self.is_modify, "correct: ",self.is_correct)
+        return
 
 class Score:
     def __init__(self):
@@ -380,7 +125,7 @@ class Score:
         self.all_weight = 0
         self.test = 0
 
-    def get_RPFA(self):
+    def get_RPFA(self) -> None:
         try: self.Precision = (self.TP)/(self.TP+self.FP)
         except ZeroDivisionError: self.Precision = 0
         try: self.Recall = (self.TP)/(self.TP+self.FN)
@@ -392,26 +137,296 @@ class Score:
         except ZeroDivisionError: self.F5 = 0
         try: self.Accuracy = (self.TP + self.TN) / (self.all_weight)
         except ZeroDivisionError: self.Accuracy = 0
-        pass
+        return
 
-    def show(self, verbose = False):
+    def show(self, verbose=False) -> None:
+        ROUND_DIGIT = 4
         if verbose:
-            print("{:.4f}".format(round(self.TP, 3)),
-                "{:.4f}".format(round(self.FP, 3)),
-                "{:.4f}".format(round(self.FN, 3)),
-                "{:.4f}".format(round(self.TN, 3)),
+            print("{:.4f}".format(round(self.TP, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.FP, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.FN, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.TN, ROUND_DIGIT)),
                 sep='\t', end='\t')
-        print("{:.4f}".format(round(self.Precision, 3)),
-                "{:.4f}".format(round(self.Recall,3 )),
-                "{:.4f}".format(round(self.F, 3)),
-                "{:.4f}".format(round(self.F5, 3)),
-                "{:.4f}".format(round(self.Accuracy, 3)),
+        print("{:.4f}".format(round(self.Precision, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.Recall, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.F, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.F5, ROUND_DIGIT)),
+                "{:.4f}".format(round(self.Accuracy, ROUND_DIGIT)),
                 sep='\t')
+        return
+
+def show_score(evaluations:dict, args, title="weighted scores") -> None:
+    sys_name = args.sys_name.split(',') if args.sys_name else None
+    print('-----', title, '-----')
+    print('name\t', end='')
+    if args.verbose:
+        print("TP","FP","FN","TN",sep="\t", end="\t")
+    print("Prec.","Recall","F","F0.5","Accuracy",sep="\t")
+    for system_id, score in evaluations.items():
+        print(sys_name[system_id] if sys_name else str(system_id),
+              end=":\t")
+        score.show(args.verbose)
+    return
+
+def calc_performance(gold_chunk: dict, is_weighted=True, target_coder=0) -> dict:
+    ''' Calculate performance: precision, recall, F, F0.5, and Accuracy.
+    Input1: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: {syste_id: Score()}
+    '''
+    system_score = dict()
+    for sent, coder2chunks in gold_chunk.items():
+        for chunk in coder2chunks[target_coder]:
+            if chunk.cat == "noop": continue
+            for system_id, evalinfo in chunk.sys2eval.items(): # look evaluation of each system for chunk
+                system_score[system_id] = system_score.get(system_id, Score())
+                system_score[system_id] = update_score(
+                    chunk, evalinfo, system_score[system_id], is_weighted)
+                
+    for score in system_score.values():
+        score.get_RPFA()
+    return system_score
+
+def update_score(chunk: ChunkInfo, evalinfo: EvalInfo, score: Score, is_weighted: bool) -> Score:
+    eval = (int(chunk.is_error), int(evalinfo.is_modify), int(evalinfo.is_correct))
+    if eval == (1,1,1): score.TP += chunk.weight if is_weighted else 1.0
+    elif eval == (1,0,0): score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (1,1,0):
+        score.FP += chunk.weight if is_weighted else 1.0
+        score.FN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,0,1): score.TN += chunk.weight if is_weighted else 1.0
+    elif eval == (0,1,0): score.FP += chunk.weight if is_weighted else 1.0
+    score.all_weight += chunk.weight if is_weighted else 1.0
+    if chunk.is_error:
+        score.test += chunk.weight if is_weighted else 1.0
+    return score
+
+def calc_weight(gold_chunks: dict, target_coder=0):
+    ''' Caclulate weight of each chunk.
+    Input: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: Data structure is same as input.
+    '''
+    for sent, coder2chunks in gold_chunks.items():
+        for chunk in coder2chunks[target_coder]:
+            chunk.calc_weight()
+    return gold_chunks
+
+def get_weight_from_weight_file(gold_chunks: dict, file_name: str, target_coder=0) -> dict:
+    weight_file = open(file_name).read().strip().split('\n')
+    number_of_sys = int(weight_file[0])
+    splited_weight_data = []
+    for line in weight_file[1:]:
+        weights = list(map(int, line.split()))
+        splited_weight_data.append(weights)
+    idx = 0
+    for sent, coder2chunks in gold_chunks.items():
+        for i, chunk in enumerate(coder2chunks[target_coder]):
+            chunk.weight = chunk.weight_f(splited_weight_data[idx][i] / number_of_sys)
+        idx += 1
+    return gold_chunks
+
+def evaluation_systems(gold_chunks: dict, systems_chunks: dict, target_coder=0) -> dict:
+    ''' Evaluate output of each system. In other words, we calculate B^(s) of the paper.
+    Input: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: Data structure is same as input.
+    '''
+    for sent, coder2chunks in gold_chunks.items():
+        # Loop gold chunks
+        for gchunk in coder2chunks[target_coder]:
+            if gchunk.cat == "noop": continue
+            # Loop systems chunks.
+            for system_id, system_chunks in enumerate(systems_chunks[sent]):
+                for schunk in system_chunks:
+                    if schunk.cat == "noop": continue
+                    if gchunk.equal(schunk) == "equal":
+                        gchunk.sys2eval[system_id] = EvalInfo(schunk.is_error, True)
+                    elif gchunk.equal(schunk) == "cover":
+                        if gchunk.sys2eval.get(system_id)\
+                            and gchunk.sys2eval[system_id].is_modify:
+                            continue
+                        gchunk.sys2eval[system_id] = EvalInfo(schunk.is_error, False)
+                if gchunk.sys2eval.get(system_id) == None:
+                    if gchunk.is_error:
+                        # In error chunk correction, not to modify is mistake.
+                        gchunk.sys2eval[system_id] = EvalInfo(False, False)
+                    else:
+                        # In non-error chunk correction, not to modify is correct.
+                        gchunk.sys2eval[system_id] = EvalInfo(False, True)
+                
+    return gold_chunks        
+
 ##########################################################################PEP79
-def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
-    # {cat : list()}
+
+def generate_error_chunks(m2_data: list, mode="gold", target_coder='0') -> dict:
+    ''' Generate only error chunks from reference.
+    Output: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    '''
+    error_chunks = dict()
+    sent2freq = dict()
+    for info in m2_data:
+        chunks = list()
+        orig_sent, coder_dict = processM2(info)
+        if coder_dict:
+            for coder, coder_info in sorted(coder_dict.items()):
+                gold_edits = coder_info[1]
+                if (mode == "gold" and coder == target_coder) or (mode == "system"):
+                    for gold_edit in gold_edits:
+                    # Um and UNK edits (uncorrected errors) are always preserved.
+                        if gold_edit[2] in {"Um", "UNK","noop"}:
+                            continue
+                        if not gold_edit: continue
+                        chunk_info = edit2ChunkInfo(orig_sent, gold_edit+[coder])
+                        chunks.append(chunk_info)
+        orig_string = ' '.join(orig_sent) # ['a', 'b', 'c'] -> 'a b c'
+        if mode == "gold":
+            sent2freq[orig_string] = sent2freq.get(orig_string, -1) + 1
+            orig_string = orig_string + ' '+ str(sent2freq[orig_string])
+        error_chunks[orig_string] = error_chunks.get(orig_string, list())
+        error_chunks[orig_string].append(chunks)
+    return error_chunks
+
+def insert_basic_chunks(error_chunks: dict) -> dict:
+    ''' Generate chunks of exist non-error token in original sentence.
+    Input: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: Data structure is same as input.
+    '''
+    for orig_sent, error_chunk in error_chunks.items():
+        for coder, chunks in enumerate(error_chunk):
+            orig_tokens = orig_sent.split()
+            basic_chunks = list()
+            # get BASIC chunk
+            prev_pos = 0
+            for i, chunk in enumerate(chunks):
+                # if index are not consecutive
+                if chunk.orig_range[0] != prev_pos:
+                    non_error_chunks = generate_non_error_chunks(
+                        prev_pos, chunk.orig_range[0], orig_tokens, coder)
+                    basic_chunks += non_error_chunks # Combine two list
+                prev_pos = chunk.orig_range[1]
+                basic_chunks.append(chunk)
+            non_error_chunks = generate_non_error_chunks(
+                        prev_pos, len(orig_tokens)-1, orig_tokens, coder)
+            basic_chunks += non_error_chunks # Combine two list
+            error_chunks[orig_sent][coder] = basic_chunks
+    return error_chunks
+
+def generate_non_error_chunks(idx_begin: int, idx_end: int, orig_tokens: list, coder: int) -> list:
+    non_error_chunks = list()
+    for i in range(idx_begin, idx_end):
+        non_error_chunks.append(edit2ChunkInfo(
+            orig_tokens, 
+            [i, i+1, "", orig_tokens[i], None ,None, coder],
+            False))
+    return non_error_chunks
+        
+def insert_insert_chunks(basic_chunks: dict) -> dict:
+    ''' Generate chunks corresponds insert.
+    Input: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: Data structure is same as input.
+    '''
+    for orig_sent, basic_chunk in basic_chunks.items():
+        for coder, chunks in enumerate(basic_chunk):
+            gold_chunks = list()
+            orig_tokens = orig_sent.split()
+            # get INSERT chunk
+            for i, chunk in enumerate(chunks):
+                # Already exist chunk correspond insert
+                if chunk.orig_range[0] == chunk.orig_range[1]:
+                    gold_chunks.append(chunk)
+                    continue
+                if i-1 >= 0 and chunks[i-1].orig_range[0] == chunks[i-1].orig_range[1]:
+                    gold_chunks.append(chunk)
+                    continue
+                insert_chunk = edit2ChunkInfo(
+                    orig_sent,
+                    [chunk.orig_range[0], chunk.orig_range[0], "INSERT", "", None, None, coder],
+                    False)
+                gold_chunks.append(insert_chunk)
+                gold_chunks.append(chunk)
+            if gold_chunks[-1].orig_range[0] != gold_chunks[-1].orig_range[1]:
+                insert_chunk = edit2ChunkInfo(
+                    orig_sent,
+                    [len(orig_tokens)-1, len(orig_tokens)-1, "INSERT", "", None, None, coder],
+                    False)
+                gold_chunks.append(insert_chunk)
+            basic_chunks[orig_sent][coder] = gold_chunks
+    return basic_chunks
+
+def generate_systems_chunks(args) -> dict:
+    ''' Generate system chunks from -hyp file.
+    Output: {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    '''
+    systems_chunks = dict()
+    sent2num = dict()
+    with open(args.hyp) as fp:
+        orig_sent = ""
+        id2edit = list()
+        for line in fp:
+            if line == "\n":
+                hyp_m2 = list()
+                for edits in id2edit:
+                    hyp_m2.append('\n'.join(edits))
+                error_chunks = generate_error_chunks(hyp_m2, "system")
+                basic_chunks = insert_basic_chunks(error_chunks)
+                system_chunks = insert_insert_chunks(basic_chunks)
+                systems_chunks[orig_sent[2:]] = system_chunks[orig_sent[2:]]
+            elif line[0] == "S":
+                orig_sent = line.rstrip()
+                sent2num[orig_sent] = sent2num.get(orig_sent,-1) + 1
+                orig_sent = orig_sent + " " + str(sent2num[orig_sent])
+                id2edit = list()
+            elif line[0] == "A":
+                index = int(line.rstrip().split('|||')[-1])
+                if index >= len(id2edit):
+                    id2edit.append(list())
+                    id2edit[-1].append(orig_sent.rstrip())
+                id2edit[index].append(line.rstrip())
+            else:
+                break
+    return systems_chunks
+
+def get_parser():
+    '''get options by argparse
+    '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ref", required=True)
+    parser.add_argument("-hyp", required=True)
+    parser.add_argument("-sys_name")
+    parser.add_argument("-heat")
+    parser.add_argument("-cat")
+    parser.add_argument("-gen_w_file")
+    parser.add_argument("-w_file")
+    parser.add_argument("-chunk_visualizer")
+    parser.add_argument("-verbose", action='store_true')
+    
+    args = parser.parse_args()
+    return args
+
+def edit2ChunkInfo(orig_tokens: list, edit: list, is_error=True) -> ChunkInfo:
+    ''' Convert edit information to ChunkInfo instance.
+    Input1: list of tokens.
+    Input2: list represented edit information. [int, int, string, string, int, int, int]
+    '''
+    info = ChunkInfo()
+    info.cat = edit[2]
+    info.orig_range = (edit[0], edit[1])
+    if info.cat == "noop":
+        info.is_error = False
+        return info
+    info.orig_sent = ' '.join(orig_tokens[edit[0]:edit[1]])
+    info.gold_range = (edit[4],edit[5])
+    info.gold_sent = edit[3]
+    info.coder_id = edit[6]
+    info.is_error = is_error
+
+    return info
+
+def calc_cat_performance(gold_chunks: dict, out_file_name: str, print_mode = "tsv") -> dict:
+    ''' Calculate performance of each error type.
+    Input1: dict, {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}
+    Output: dict, {error_type: [sum, average, SD, freq]}
+    '''
     cat2weight_list = toolbox.categories_counter(gold_chunks)
-    cat2score = dict() # {cat : [sum, average, SD, size]}
+    cat2score = dict() # {cat : [sum, average, SD, freq]}
     for cat, weight_list in cat2weight_list.items():
         cat2score[cat] = cat2score.get(cat, [0, 0, 0, 0])
         cat2score[cat][3] = len(weight_list)
@@ -451,11 +466,14 @@ def calc_cat_performance(gold_chunks, out_file_name, print_mode = "tsv"):
 
 ##########################################################################PEP79
 
-def generate_weight_file(gold_chunks, file_name):
+def generate_weight_file(gold_chunks: dict, file_name: str) -> None:
+    ''' Generate weight-file.
+    Input1: dict, {original_sentence: [[ChunkInfo,...,ChunkInfo],...,[ChunkInfo,...,ChunkInfo]]}    
+    '''
     out = open(file_name,"w")
     is_written_number_of_system = True
-    for sent, systems_chunks in gold_chunks.items():
-        for chunks in systems_chunks:
+    for sent, coder2chunks in gold_chunks.items():
+        for chunks in coder2chunks:
             weight_list = list()
             for gchunk in chunks:
                 if is_written_number_of_system:
@@ -467,6 +485,7 @@ def generate_weight_file(gold_chunks, file_name):
                 weight_list.append(str(round(n_i)))
             out.write(' '.join(weight_list)+'\n')
     out.close()
+    return
         
 
 # Copyright (c) 2017 Christopher Bryant, Mariano Felice
@@ -533,13 +552,6 @@ def processEdits(edits):
 		else:
 			edit_dict[id] = [proc_edit]
 	return edit_dict
-
-
-def debug(chunks):
-    for sent, systems in chunks.items():
-        for system in systems:
-            for chunk in system:
-                chunk.show(True)
       
 if __name__ == "__main__":
     args = get_parser()

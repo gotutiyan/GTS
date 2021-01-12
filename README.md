@@ -1,6 +1,6 @@
 # Go-To-Scorer
 
-Code for the paper: "Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation". (In COLING 2020) 
+Code for the [paper](https://www.aclweb.org/anthology/2020.coling-main.188/): "Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation". (In COLING 2020) 
 
 Our tools named Go-To-Scorer(GTS) can evaluate the GEC system performance considered the difficulty of error correction. In addition, GTS provides visualizer of error correction difficulty, the  evaluation function using the weight-file, and a function for computing the difficulty of each error type.
 
@@ -35,6 +35,18 @@ each oprions is required.
 * `-w_file <weight_file_path>`
 
   Evaluate systems for using [weight-file](https://github.com/gotutiyan/GTS/tree/master/weight_files).  This function is for evaluating system in isolation. 
+  
+* `-chunk_visualizer <file_path>`
+
+  Visualize the chunk as shown in the following example. If `None` is specified as the path of the file, it will be output to the terminal.
+
+  ```
+  orig: ||We|         |discussing||about||its||.||
+  gold: ||We|have been|discussing||     ||it ||.||
+  
+  orig: ||I||have been||to|   |park||tomorrow||.||
+  gold: ||I||   go    ||to|the|park||        ||.||
+  ```
 
 ### Demo
 
