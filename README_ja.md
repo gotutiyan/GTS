@@ -40,7 +40,7 @@ python3.8での動作を確認済み．
 python gotoscorer.py -ref <ref_file> -hyp <hyp_file>
 ```
 
-`-ref <ref_file> ` はリファレンスのM2ファイル， `-hyp <hyp_file> ` はシステムの訂正結果を示すM2ファイルである． これらのファイルは共に[ERRANT](https://github.com/chrisjbryant/errant)を用いて生成可能である（後述）. 例は `demo/ref.m2` と `demo/hyp.m2`を参照．
+`-ref <ref_file>` はリファレンスのM2ファイル， `-hyp <hyp_file>` はシステムの訂正結果を示すM2ファイルである． これらのファイルは共に[ERRANT](https://github.com/chrisjbryant/errant)を用いて生成可能である（後述）. 例は `demo/ref.m2` と `demo/hyp.m2`を参照．
 
 ### Quick Start
 
@@ -52,7 +52,7 @@ Output：
 
 ```
 ----- Weighted Scores -----
-Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
+Sys_name	Prec. 	Recall	F	F0.5	Accuracy
 0       :	1.0000	0.4444	0.6154	0.8000	0.5833
 1       :	0.2500	0.2222	0.2353	0.2439	0.2500
 2       :	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -70,7 +70,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
   ```
   ----- Weighted Scores -----
-  Sys_name	TP      	FP      	FN      	TN      	Prec.	Recall	F	F0.5	Accuracy
+  Sys_name	  TP      	  FP      	  FN      	  TN      	Prec.	Recall	F	F0.5	Accuracy
   0       :	  1.3333	  0.0000	  1.6667	  1.0000	1.0000	0.4444	0.6154	0.8000	0.5833
   1       :	  0.6667	  2.0000	  2.3333	  0.3333	0.2500	0.2222	0.2353	0.2439	0.2500
   2       :	  0.0000	  2.6667	  3.0000	  0.6667	0.0000	0.0000	0.0000	0.0000	0.1667

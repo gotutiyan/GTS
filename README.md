@@ -34,7 +34,7 @@ It is confirmed to work with python 3.8.0.
 python gotoscorer.py -ref <ref_file> -hyp <hyp_file>
 ```
 
-`-ref <ref_file> ` represents a reference M2 file and `-hyp <hyp_file> ` represents a hypothesis M2 file. You can generate both of files by [ERRANT](https://github.com/chrisjbryant/errant). You can see `demo/ref.m2` and `demo/hyp.m2` for an example. 
+`-ref <ref_file>` represents a reference M2 file and `-hyp <hyp_file>` represents a hypothesis M2 file. You can generate both of files by [ERRANT](https://github.com/chrisjbryant/errant). You can see `demo/ref.m2` and `demo/hyp.m2` for an example. 
 
 ### Quick Start
 
@@ -46,7 +46,7 @@ Output:
 
 ```
 ----- Weighted Scores -----
-Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
+Sys_name	Prec. 	Recall	F	F0.5	Accuracy
 0       :	1.0000	0.4444	0.6154	0.8000	0.5833
 1       :	0.2500	0.2222	0.2353	0.2439	0.2500
 2       :	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -64,7 +64,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
   ```
   ----- Weighted Scores -----
-  Sys_name	TP      	FP      	FN      	TN      	Prec.	Recall	F	F0.5	Accuracy
+  Sys_name	  TP      	  FP      	  FN      	  TN      	Prec.	Recall	F	F0.5	Accuracy
   0       :	  1.3333	  0.0000	  1.6667	  1.0000	1.0000	0.4444	0.6154	0.8000	0.5833
   1       :	  0.6667	  2.0000	  2.3333	  0.3333	0.2500	0.2222	0.2353	0.2439	0.2500
   2       :	  0.0000	  2.6667	  3.0000	  0.6667	0.0000	0.0000	0.0000	0.0000	0.1667
