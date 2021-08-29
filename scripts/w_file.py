@@ -11,6 +11,7 @@ def export_w_file(weighted_gold_chunks: list, file_name: str) -> None:
     out_fp.close()
     return
 
+
 def import_w_file(file_path: str):
     number_of_system, *weights_list\
         = open(file_path).read().rstrip().split('\n')
@@ -18,6 +19,7 @@ def import_w_file(file_path: str):
     for i in range(len(weights_list)):
         weights_list[i] = list(map(int, weights_list[i].rstrip().split(' ')))
     return weights_list, number_of_system
+
 
 def set_weight(gold_chunks: list, w_file_path: str, a: float, b: float, c: float) -> list:
     weights_list, number_of_system = import_w_file(w_file_path)

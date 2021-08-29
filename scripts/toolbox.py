@@ -2,6 +2,7 @@ from scripts import infobox
 from scripts.infobox import ChunkInfo
 import statistics as stat
 
+
 def category_difficulty(gold_chunks: list, mode: int) -> list:
     cat2weight_list = dict()
     for gold_chunk in gold_chunks:
@@ -31,6 +32,7 @@ def category_difficulty(gold_chunks: list, mode: int) -> list:
     cat_diffs = sorted(cat_diffs, key=lambda x:x[0], reverse=True)
     return cat_diffs
 
+
 def show_categories_difficulty(weighted_gold_chunks: list, mode: int) -> None:
     cat_diffs = category_difficulty(weighted_gold_chunks, mode)
     print('----- Category Difficulty -----')
@@ -40,11 +42,13 @@ def show_categories_difficulty(weighted_gold_chunks: list, mode: int) -> None:
             .format(diff[3], diff[0], diff[1], diff[2]))
     return
 
+
 def debug(chunks: list, verbose=False) -> None:
     for chunk in chunks:
         chunk.show(verbose)
     print('-----')
     return
+
 
 def chunk_visualizer(gold_chunks: list, file_name: str) -> None:
     if file_name != "None":
@@ -75,6 +79,7 @@ def chunk_visualizer(gold_chunks: list, file_name: str) -> None:
             out_fp.write('weight: ' + weight_str + '\n')
             out_fp.write('cat   : ' + cat_str + '\n\n')
 
+
 def str_helper_for_visualizer(string: str, max_leng: int) -> str:
     '''
     >>> str_helper_for_visualizer("aaa", 5)
@@ -85,34 +90,7 @@ def str_helper_for_visualizer(string: str, max_leng: int) -> str:
     space = lambda x: ' '*x
     space_num = (max_leng - len(string)) // 2
     ret_str = space(space_num)\
-                + string\
-                + space(space_num + (max_leng - len(string))%2)\
-                + '|'
+        + string\
+        + space(space_num + (max_leng - len(string)) % 2)\
+        + '|'
     return ret_str
-
-def import_m2(m2_path: str, coder_id=0):
-    m2s = open(m2_path).read().split('\n\n')
-    origs = []
-    gold_edits = []
-    for m2 in m2s:
-        orig, *edits = m2.split('\n')
-        if orig == '': continue
-        origs.append(orig[2:]) # Eliminate "S "
-        edits_of_orig = []
-        for edit in edits:
-            if edit == '': continue
-            if int(edit[-1]) != coder_id: continue
-            edits_of_orig.append(edit[2:]) # Eliminate "A "
-        gold_edits.append(edits_of_orig)
-    return origs, gold_edits
-
-def edit_to_chunk(tokens: list, edit: str) -> ChunkInfo:
-    edit = edit.split('|||')
-    start_idx = int(edit[0].split(' ')[0])
-    end_idx = int(edit[0].split(' ')[1])
-    chunk = infobox.ChunkInfo((start_idx, end_idx),
-                              ' '.join(tokens[start_idx:end_idx]),
-                              edit[2],
-                              True)
-    chunk.cat = edit[1]
-    return chunk

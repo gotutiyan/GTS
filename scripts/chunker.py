@@ -1,8 +1,9 @@
-from scripts import toolbox, infobox
+from scripts import infobox
+
 
 # Generate error-only chunk corresponding annotator_id
 def generate_chunk_from_m2(m2_path: str, annotator_id: int) -> list:
-    origs, edits_list = toolbox.import_m2(m2_path, annotator_id)
+    origs, edits_list = import_m2(m2_path, annotator_id)
     if is_there_no_edit(edits_list):
         return -1
     chunks_list = []
@@ -14,15 +15,17 @@ def generate_chunk_from_m2(m2_path: str, annotator_id: int) -> list:
         chunks_list.append(chunks)
     return chunks_list
 
+
 # First, we make chunk include only errorneous chunk
 def make_erroneous_chunks(tokens: list, edits: list) -> list:
     erroneous_chunks = []
     for edit in edits:
-        chunk = toolbox.edit_to_chunk(tokens, edit)
+        chunk = edit_to_chunk(tokens, edit)
         if chunk.cat in ["noop", "UNK", "Um"]:
             continue
         erroneous_chunks.append(chunk)
     return erroneous_chunks
+
 
 # Second, we add non-errorneous chunk which corresponding a token
 def add_basic_chunks(tokens, erroneouse_chunks):
@@ -30,20 +33,23 @@ def add_basic_chunks(tokens, erroneouse_chunks):
     basic_chunks = []
     for chunk in erroneouse_chunks:
         for i in range(idx, chunk.orig_range[0]):
-            basic_chunk = infobox.ChunkInfo((i,i+1),
-                                            ' '.join(tokens[i:i+1]),
-                                            ' '.join(tokens[i:i+1]),
-                                            False)
+            basic_chunk = infobox.ChunkInfo(
+                (i, i+1),
+                ' '.join(tokens[i:i+1]),
+                ' '.join(tokens[i:i+1]),
+                False)
             basic_chunks.append(basic_chunk)
         basic_chunks.append(chunk)
         idx = chunk.orig_range[1]
     for i in range(idx, len(tokens)):
-        basic_chunk = infobox.ChunkInfo((i,i+1),
-                                        ' '.join(tokens[i:i+1]),
-                                        ' '.join(tokens[i:i+1]),
-                                        False)
+        basic_chunk = infobox.ChunkInfo(
+            (i, i+1),
+            ' '.join(tokens[i:i+1]),
+            ' '.join(tokens[i:i+1]),
+            False)
         basic_chunks.append(basic_chunk)
     return basic_chunks
+
 
 # Third, we add non-errorneous chunk which corresponding an insert
 def add_insert_chunks(tokens: list, basic_chunks: list):
@@ -52,11 +58,12 @@ def add_insert_chunks(tokens: list, basic_chunks: list):
         if chunk.is_insert_chunk():
             chunks.append(chunk)
             continue
-        if i-1>=0 and basic_chunks[i-1].is_insert_chunk():
+        if i-1 >= 0 and basic_chunks[i-1].is_insert_chunk():
             chunks.append(chunk)
             continue
-        insert_chunk = infobox.ChunkInfo((chunk.orig_range[0], chunk.orig_range[0]),
-                                         '', '', False)
+        insert_chunk = infobox.ChunkInfo(
+            (chunk.orig_range[0], chunk.orig_range[0]),
+            '', '', False)
         chunks.append(insert_chunk)
         chunks.append(chunk)
     if not basic_chunks[-1].is_insert_chunk():
@@ -65,19 +72,56 @@ def add_insert_chunks(tokens: list, basic_chunks: list):
         chunks.append(insert_chunk)
     return chunks
 
+
 def is_there_no_edit(edits_list: list) -> bool:
     for edits in edits_list:
         if edits != []:
             return False
     return True
 
+
 def generate_system_chunks(hyp_path: str) -> list:
     system_chunks = []
     system_id = 0
     while True:
         system_chunk = generate_chunk_from_m2(hyp_path, annotator_id=system_id)
-        if system_chunk == -1: # There is no edit corrsponding system_id
+        if system_chunk == -1:
+            # There is no edit corrsponding system_id
             break
         system_chunks.append(system_chunk)
         system_id += 1
     return system_chunks
+
+
+def import_m2(m2_path: str, annotator_id=0):
+    m2s = open(m2_path).read().split('\n\n')
+    origs = []
+    gold_edits = []
+    for m2 in m2s:
+        orig, *edits = m2.split('\n')
+        if orig == '':
+            continue
+        # Eliminate "S "
+        origs.append(orig[2:])
+        edits_of_orig = []
+        for edit in edits:
+            if edit == '':
+                continue
+            if int(edit.split('|||')[-1]) != annotator_id:
+                continue
+            # Eliminate "A "
+            edits_of_orig.append(edit[2:])
+        gold_edits.append(edits_of_orig)
+    return origs, gold_edits
+
+
+def edit_to_chunk(tokens: list, edit: str):
+    edit = edit.split('|||')
+    start_idx = int(edit[0].split(' ')[0])
+    end_idx = int(edit[0].split(' ')[1])
+    chunk = infobox.ChunkInfo((start_idx, end_idx),
+                              ' '.join(tokens[start_idx:end_idx]),
+                              edit[2],
+                              True)
+    chunk.cat = edit[1]
+    return chunk

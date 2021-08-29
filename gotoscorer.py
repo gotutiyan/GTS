@@ -2,26 +2,24 @@ import argparse
 import os
 import random
 from operator import itemgetter
-from scripts import chunker, alignmenter, toolbox, heatmap, w_file
+from scripts import chunker, alignmenter, toolbox, heatmap, w_file, infobox
 
 def main(args):
     print('Generating chunks...')
     gold_chunks = chunker.generate_chunk_from_m2(args.ref, annotator_id=args.ref_id)
     if gold_chunks == -1:
-        raise ValueError('The -ref_coder_id you specified is invalid.')
+        raise ValueError('The -ref_id is invalid.')
     system_chunks = chunker.generate_system_chunks(args.hyp)
     assert(len(gold_chunks) == len(system_chunks[0]))
-    print('Number of sentences: {}'.format(len(gold_chunks)))
-    print('Number of candidate systems: {}'.format(len(system_chunks)))
+    # print('Number of sentences: {}'.format(len(gold_chunks)))
+    print('Number of systems: {}'.format(len(system_chunks)))
     print('Scoring systems...')
-    scored_gold_chunk = alignmenter.chunk_scorer(gold_chunks, system_chunks)
+    scored_gold_chunk = alignmenter.evaluate(gold_chunks, system_chunks)
     if args.w_file:
         weighted_gold_chunks = w_file.set_weight(gold_chunks, args.w_file, args.a, args.b, args.c)
     else:
-        weighted_gold_chunks =  calculate_weight(scored_gold_chunk, args.a, args.b, args.c)
-    scores = alignmenter.calculate_system_score(weighted_gold_chunks, len(system_chunks), args.no_weight)
-    # for gold_chunks in weighted_gold_chunks:
-    #     toolbox.debug(gold_chunks, True)
+        weighted_gold_chunks = calculate_weight(scored_gold_chunk, args.a, args.b, args.c)
+    scores = calculate_system_score(weighted_gold_chunks, len(system_chunks), args.no_weight)
     show_score(scores, args)
 
     if args.heat_map:
@@ -39,11 +37,41 @@ def main(args):
 
     return
 
+
+def calculate_system_score(weighted_gold_chunks: list, max_system_id: int, no_weight=False) -> list:
+    scores = [infobox.Score(sys_id=i) for i in range(max_system_id)]
+    for gold_chunks in weighted_gold_chunks:
+        for gchunk in gold_chunks:
+            scores = update_scores(scores, gchunk, no_weight)
+    for score in scores:
+        score.get_PRFA()
+    return scores
+
+
+def update_scores(scores: list, gchunk: list, no_weight: bool) -> list:
+    for system_id, eval_info in enumerate(gchunk.sys2eval):
+        scores[system_id].all_weight += (1 if no_weight else gchunk.weight)
+        if eval_info.is_modified: # If system modified
+            if eval_info.is_correct: # If modification is correct
+                scores[system_id].TP += (1 if no_weight else gchunk.weight)
+            else:
+                scores[system_id].FP += (1 if no_weight else gchunk.weight)
+                if gchunk.is_modified:
+                    scores[system_id].FN += (1 if no_weight else gchunk.weight)
+        else: # If the system didn't modify
+            if eval_info.is_correct:
+                scores[system_id].TN += (1 if no_weight else gchunk.weight)
+            else:
+                scores[system_id].FN += (1 if no_weight else gchunk.weight)
+    return scores
+
+
 def calculate_weight(scored_gold_chunks: list, a: float, b: float, c: float) -> list:
-    for scored_gold_chunk in scored_gold_chunks: # Sentence loop
+    for scored_gold_chunk in scored_gold_chunks:# Sentence loop
         for chunk in scored_gold_chunk: # Chunk loop
             chunk.calc_weight(a, b, c)
     return scored_gold_chunks
+
 
 def show_score(scores: list, args) -> None:
     sys_name = args.sys_name.split(',') if args.sys_name else None
@@ -58,16 +86,16 @@ def show_score(scores: list, args) -> None:
     if args.verbose:
         print("{:8}\t{:8}\t{:8}\t{:8}\t".format("TP","FP","FN","TN"), end="")
     print("Prec.","Recall","F","F0.5","Accuracy", sep="\t")
-    # scores = sorted(scores, key=lambda x:x.F5, reverse=True)
+    if args.sort:
+        scores = sorted(scores, key=lambda x:x.F05, reverse=True)
     for score in scores:
-        # print(sys_name[score.sys_id]+space(sys_name[score.sys_id])if sys_name else score.sys_id,
-        #       end=":\t")
         if sys_name:
             print(sys_name[score.sys_id] + space(sys_name[score.sys_id]), end=':\t')
         else:
             print(str(score.sys_id) + space(str(score.sys_id)), end=':\t')
         score.show(args.verbose)
     return
+
 
 def get_parser() -> None:
     '''Get options
@@ -114,6 +142,10 @@ def get_parser() -> None:
     parser.add_argument(
         "-v", "-verbose","--verbose",
         help="Output will be included TP,FP,FN,TN.",
+        action='store_true')
+    parser.add_argument(
+        "-sort","--sort",
+        help="Output will be sorted by F_0.5",
         action='store_true')
     parser.add_argument(
         "-a", "--a", type=float,

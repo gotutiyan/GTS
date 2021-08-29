@@ -38,6 +38,7 @@ def generate_heatmap(gold_chunks: list, file_name: str) -> None:
     out_fp.close()
     return
 
+
 def convert_chunk_to_htmlsentence(gchunk) -> list:
     s = ''
     mouseover = 'onmouseover="f({})"'.format(
@@ -69,12 +70,14 @@ def convert_chunk_to_htmlsentence(gchunk) -> list:
                 s+=' '
     return s
 
+
 def count_false_positive(chunk) -> int:
     ret = 0
     for evalinfo in chunk.sys2eval:
         if evalinfo.is_modified and not evalinfo.is_correct:
             ret += 1
     return ret
+
 
 def generate_css(number_of_systems: int) -> str:
     css_str = '<style type="text/css">\n'
