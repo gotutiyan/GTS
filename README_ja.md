@@ -1,4 +1,4 @@
-# Go-To-Scorer
+# GoToScorer
 
 本リポジトリは，以下の論文のツールである．
 
@@ -32,6 +32,8 @@
 
 GoToScorerは，文法誤り訂正タスクの評価のためのツールである．特に，訂正難易度を考慮した評価を行うことが特徴である．また，訂正難易度の可視化や，重みファイルを用いたシステムの単一評価などの機能を提供する．
 
+python3.8での動作を確認済み．
+
 ### Usage
 
 ```bash
@@ -40,10 +42,10 @@ python gotoscorer.py -ref <ref_file> -hyp <hyp_file>
 
 `-ref <ref_file> ` はリファレンスのM2ファイル， `-hyp <hyp_file> ` はシステムの訂正結果を示すM2ファイルである． これらのファイルは共に[ERRANT](https://github.com/chrisjbryant/errant)を用いて生成可能である（後述）. 例は `demo/ref.m2` と `demo/hyp.m2`を参照．
 
-#### Quick Start
+### Quick Start
 
 ```shell
-$ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2
+$ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2
 ```
 
 Output：
@@ -63,12 +65,12 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   出力にTP,FP,FN,TNを含める．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -v
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -v
   ```
 
   ```
   ----- Weighted Scores -----
-  Sys_name	  TP      	FP      	FN      	TN      Prec.	  Recall	F	      F0.5	Accuracy
+  Sys_name	TP      	FP      	FN      	TN      	Prec.	Recall	F	F0.5	Accuracy
   0       :	  1.3333	  0.0000	  1.6667	  1.0000	1.0000	0.4444	0.6154	0.8000	0.5833
   1       :	  0.6667	  2.0000	  2.3333	  0.3333	0.2500	0.2222	0.2353	0.2439	0.2500
   2       :	  0.0000	  2.6667	  3.0000	  0.6667	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -79,12 +81,12 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   出力時に，最も左の列を指定した名前に置き換える．名前はカンマで区切ることで与える．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -name CNN,LSTM,Transformer
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -name CNN,LSTM,Transformer
   ```
 
   ```
   ----- Weighted Scores -----
-  Sys_name   	  Prec.	  Recall	F	      F0.5	  Accuracy
+  Sys_name   	Prec.	Recall	F	F0.5	Accuracy
   CNN        :	1.0000	0.4444	0.6154	0.8000	0.5833
   LSTM       :	0.2500	0.2222	0.2353	0.2439	0.2500
   Transformer:	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -95,7 +97,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   エラータイプごとの難易度の平均，標準偏差，頻度を出力する．出力は平均に対して降順で出力される．`{1,2,3}`はエラータイプの粒度を表しており，ERRANTと同じように振る舞う．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cat 3
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cat 3
   ```
 
   ```txt
@@ -111,10 +113,10 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
 * `-heat <output_file>`
 
-  訂正難易度を可視化するhtmlファイルを出力する．例として`demo/heat_map.html`を参照のこと．
+  訂正難易度をヒートマップの形式で可視化するhtmlファイルを出力する．例として`demo/heat_map.html`を参照のこと．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -heat demo/heat_map.html
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -heat demo/heat_map.html
   ```
 
 * `-gen_w_file <output_file>`
@@ -122,7 +124,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   重みファイルを出力する．本来，訂正難易度を算出するためには複数システムの出力を必要とするが，事前に作成した重みファイルを用いることで単一システムの評価が可能である．重みファイルの例は`demo/weight.txt`を参照のこと．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -gen_w_file demo/weight.txt 
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -gen_w_file demo/weight.txt 
   ```
 
 * `-w_file <weight_file>`
@@ -130,7 +132,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   重みファイルを用いてシステムを評価する．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp_1sys.m2 -w_file demo/weight.txt 
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp_1sys.m2 -w_file demo/weight.txt 
   ```
 
   ```
@@ -144,7 +146,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   チャンクを重みとカテゴリと共に可視化する．出力パスに`None`を指定すると，ターミナルに出力する．
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cv None
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cv None
   ```
 
   ```

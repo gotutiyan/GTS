@@ -1,12 +1,10 @@
-# Go-To-Scorer
+# GoToScorer
 
 Code for the [paper](https://www.aclweb.org/anthology/2020.coling-main.188/):
 
 Takumi Gotou, Ryo Nagata, Masato Mita and Kazuaki Hanawa
 “Taking the Correction Difficulty into Account in Grammatical Error Correction Evaluation”
-In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020)  [Link: ACL Anthology](https://www.aclweb.org/anthology/2020.coling-main.188/)
-
-Citation:
+In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020)
 
 ```
 @inproceedings{gotou-etal-2020-taking,
@@ -26,7 +24,9 @@ Citation:
 }
 ```
 
-Our tools named GoToScorer can evaluate the GEC systems performances considering the difficulty of error correction. In addition, GTS provides visualizer of error correction difficulty and chunk.
+GoToScorer can evaluate the GEC systems performances considering the difficulty of error correction.
+
+It is confirmed to work with python 3.8.0.
 
 ### Usage
 
@@ -34,15 +34,15 @@ Our tools named GoToScorer can evaluate the GEC systems performances considering
 python gotoscorer.py -ref <ref_file> -hyp <hyp_file>
 ```
 
-`-ref <ref_file> ` represents a reference M2 file and `-hyp <hyp_file> ` represents a hypothesis M2 file. We can generate both of files with [ERRANT](https://github.com/chrisjbryant/errant). You can see `demo/ref.m2` and `demo/hyp.m2` for an example. 
+`-ref <ref_file> ` represents a reference M2 file and `-hyp <hyp_file> ` represents a hypothesis M2 file. You can generate both of files by [ERRANT](https://github.com/chrisjbryant/errant). You can see `demo/ref.m2` and `demo/hyp.m2` for an example. 
 
-#### Quick Start
+### Quick Start
 
 ```shell
-$ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2
+$ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2
 ```
 
-Output：
+Output:
 
 ```
 ----- Weighted Scores -----
@@ -56,15 +56,15 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
 * `-v`
 
-  Output include TP,FP,FN,TN.
+  The output includes TP, FP, FN and TN.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -v
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -v
   ```
 
   ```
   ----- Weighted Scores -----
-  Sys_name	  TP      	FP      	FN      	TN      Prec.	  Recall	F	      F0.5	Accuracy
+  Sys_name	TP      	FP      	FN      	TN      	Prec.	Recall	F	F0.5	Accuracy
   0       :	  1.3333	  0.0000	  1.6667	  1.0000	1.0000	0.4444	0.6154	0.8000	0.5833
   1       :	  0.6667	  2.0000	  2.3333	  0.3333	0.2500	0.2222	0.2353	0.2439	0.2500
   2       :	  0.0000	  2.6667	  3.0000	  0.6667	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -75,12 +75,12 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   Register system names for output to convert id to specified. Separate each name with comma.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -name CNN,LSTM,Transformer
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -name CNN,LSTM,Transformer
   ```
 
   ```
   ----- Weighted Scores -----
-  Sys_name   	  Prec.	  Recall	F	      F0.5	  Accuracy
+  Sys_name   	Prec.	Recall	F	F0.5	Accuracy
   CNN        :	1.0000	0.4444	0.6154	0.8000	0.5833
   LSTM       :	0.2500	0.2222	0.2353	0.2439	0.2500
   Transformer:	0.0000	0.0000	0.0000	0.0000	0.1667
@@ -88,10 +88,10 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
 * `-cat {1,2,3}`
 
-  Compute mean and standard deviation of each error type difficulty in descending order.
+  Compute mean and standard deviation of each error type difficulty in descending order. `{1,2,3}` is granularity of error type, same behavior of ERRANT.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cat 3
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cat 3
   ```
 
   ```txt
@@ -107,26 +107,26 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
 
 * `-heat <output_file>`
 
-  Generate a visualizer of error correction difficulty. The visualizer corresponds to Figure 1 in the paper, like heat-map. You can see `demo/heat_map.html` for an example.
+  Generate a heat map of error correction difficulty. You can see `demo/heat_map.html` for an example.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -heat demo/heat_map.html
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -heat demo/heat_map.html
   ```
 
 * `-gen_w_file <output_file>`
 
-  Generate weight-file. Originally, the output of multiple systems is required to calculate the correction difficulty, but a single system can be evaluated by using a pre-made weight-file. You can see `demo/weight.txt` for an example.
+  Generate a weight-file. Originally, multiple systems outputs are required to calculate the correction difficulty, but a single system can be evaluated by using a pre-made weight-file. You can see `demo/weight.txt` for an example.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -gen_w_file demo/weight.txt 
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -gen_w_file demo/weight.txt 
   ```
 
 * `-w_file <weight_file>`
 
-  Evaluate a system using weight-file. 
+  Evaluate a system using a weight-file. 
   
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp_1sys.m2 -w_file demo/weight.txt 
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp_1sys.m2 -w_file demo/weight.txt 
   ```
   
   ```
@@ -140,7 +140,7 @@ Sys_name	Prec. 	Recall	F	      F0.5	  Accuracy
   Visualize the chunk with weight and error type, as shown in the following example. If you specify `None` as the file path, the output will be on the terminal.
 
   ```shell
-  $ python3 gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cv None
+  $ python gotoscorer.py -ref demo/ref.m2 -hyp demo/hyp.m2 -cv None
   ```
   
   ```
@@ -179,6 +179,6 @@ GTS requires reference M2 and hypothesis M2. You can make these files using [ERR
 ### Visualizer of error correction difficulty
 
 GTS provides a visualizer of error correction difficulty.
-Errors are colored according to the success rate: pale (easier) to deep (harder).  Furthermore, the red indicates that system has corrected what should be corrected, and blue indicates that system has corrected what should not be corrected. If you mouseover colored words, you can see the detail of the correction: an error type, a correct correction, a weight.
+Errors are colored according to the success rate: pale (easier) to deep (harder).  Furthermore, the red indicates errors what should be corrected (TP, FN), and the blue indicates that system has corrected what should not be corrected (FP). If you mouseover colored words, you can see the detail of the correction: an error type, a correct correction, a weight.
 
 ![heat_map](./image/heat_map.gif)
